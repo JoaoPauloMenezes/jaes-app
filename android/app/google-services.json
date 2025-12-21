@@ -1,0 +1,67 @@
+{
+  "project_info": {
+    "project_number": "1079834747063",
+    "project_id": "jaes-51995",
+    "storage_bucket": "jaes-51995.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1079834747063:android:fe1b6de45c8f7b7dbdad32",
+        "android_client_info": {
+          "package_name": "com.example.app1"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAFYewPnExVsb6p--iU7umXPlS2PO85ghY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1079834747063:android:7c3d3a8358245ecbbdad32",
+        "android_client_info": {
+          "package_name": "com.jae"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAFYewPnExVsb6p--iU7umXPlS2PO85ghY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1079834747063:android:fd1c12f36e2595c5bdad32",
+        "android_client_info": {
+          "package_name": "com.jaes.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAFYewPnExVsb6p--iU7umXPlS2PO85ghY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
