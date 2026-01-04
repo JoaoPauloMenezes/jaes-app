@@ -5,6 +5,7 @@ import '../models/deck.dart';
 import 'add_flashcard_screen.dart';
 import 'deck_flashcards_page.dart';
 import '../services/firebase_deck_service.dart';
+import '../services/sample_data_generator.dart';
 
 
 class LibraryPage extends StatefulWidget {
@@ -147,10 +148,43 @@ class _LibraryPageState extends State<LibraryPage> {
     }
   }
 
+  Future<void> _generateSampleData() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+
+    final success = await SampleDataGenerator.generateSampleData();
+    Navigator.pop(context); // Close loading dialog
+
+    if (success) {
+      await _loadDecks();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sample data generated successfully!')),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Error generating sample data')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Your Flashcard Decks')),
+      appBar: AppBar(
+        title: const Text('Your Flashcard Decks'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.data_usage),
+            tooltip: 'Generate Sample Data',
+            onPressed: _generateSampleData,
+          ),
+        ],
+      ),
       body: ListView.builder(
         itemCount: _decks.length,
         itemBuilder: (context, index) {

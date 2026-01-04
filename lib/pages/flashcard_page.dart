@@ -3,12 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'dart:async';
 import '../models/flashcard.dart';
+import '../models/daily_flashcard_set.dart';
 import '../enums/flashcard_state.dart';
 import '../models/short_term_memo.dart';
+import '../widgets/daily_set_summary_widget.dart';
 // Firebase services are not directly used here; they were removed to fix analyzer warnings.
 import '../services/flashcard_service.dart';
 import '../services/deck_service.dart';
 import '../services/short_term_memo_service.dart';
+import '../services/daily_flashcard_set_service.dart';
 
 class FlashcardPage extends StatefulWidget {
   const FlashcardPage({super.key});
@@ -19,6 +22,7 @@ class FlashcardPage extends StatefulWidget {
 
 class _FlashcardPageState extends State<FlashcardPage> {
   List<Flashcard> _activeCards = [];
+  List<Flashcard> _testedCards = [];
   bool _isLoading = true;
   late final FlutterTts _flutterTts;
   Timer? _speakDelayTimer;
@@ -94,6 +98,20 @@ class _FlashcardPageState extends State<FlashcardPage> {
     }
   }
 
+  Future<void> _resetDailySet() async {
+    // Clear the stored daily set to force generation of a new one
+    await DailyFlashcardSetService.clearStoredSet();
+    // Reset the page state
+    setState(() {
+      _activeCards = [];
+      _testedCards = [];
+      _isLoading = true;
+      _isBackVisible.clear();
+    });
+    // Reload the flashcards
+    await _loadActiveCards();
+  }
+
   Future<void> _loadActiveCards() async {
     try {
       // First, try to load decks from local database
@@ -137,17 +155,33 @@ class _FlashcardPageState extends State<FlashcardPage> {
       //   }
       // }
       
-      // Filter cards by active decks
+      // Filter cards by active decks and enabled status
       final activeDeckIds = activeDecks.map((deck) => deck.id).toSet();
-        final cardsFromActiveDecks = allCards
-          .where((card) => card.deckId != null && activeDeckIds.contains(card.deckId) && (card.isEnabled == true))
+      final availableCards = allCards
+          .where((card) => card.deckId != null && 
+                  activeDeckIds.contains(card.deckId) && 
+                  (card.isEnabled == true))
           .toList();
 
-      // Shuffle the cards for random order
-      cardsFromActiveDecks.shuffle();
+      // Get or create today's daily flashcard set
+      final dailySet = await DailyFlashcardSetService.getTodaysSet(availableCards);
+
+      if (dailySet == null || dailySet.flashcardIds.isEmpty) {
+        setState(() {
+          _activeCards = [];
+          _isLoading = false;
+        });
+        return;
+      }
+
+      // Filter cards to only include those in today's daily set
+      final dailySetIds = dailySet.flashcardIds.toSet();
+      final cardsForToday = availableCards
+          .where((card) => dailySetIds.contains(card.id))
+          .toList();
 
       setState(() {
-        _activeCards = cardsFromActiveDecks;
+        _activeCards = cardsForToday;
         _isLoading = false;
       });
     } catch (e) {
@@ -169,6 +203,14 @@ class _FlashcardPageState extends State<FlashcardPage> {
 
   @override
   Widget build(BuildContext context) {
+    // If all cards have been tested, show summary
+    if (!_isLoading && _activeCards.isEmpty && _testedCards.isNotEmpty) {
+      return DailySetSummaryWidget(
+        testedCards: _testedCards,
+        onResetDaily: _resetDailySet,
+      );
+    }
+
     // Simple, robust build that avoids nested scrolling and keeps widgets balanced.
     if (_isLoading) {
       return const Scaffold(
@@ -265,6 +307,7 @@ class _FlashcardPageState extends State<FlashcardPage> {
                       await ShortTermMemoService.saveMemo(memo);
                       setState(() {
                         _activeCards.removeAt(cardIndex);
+                        _testedCards.add(removed);
                         _isBackVisible.remove(removed.id);
                       });
                     },
@@ -285,7 +328,7 @@ class _FlashcardPageState extends State<FlashcardPage> {
                       await ShortTermMemoService.saveMemo(memo);
                       setState(() {
                         _activeCards.removeAt(cardIndex);
-                        _activeCards.add(updatedCard);
+                        _testedCards.add(updatedCard);
                       });
                     },
                   ),

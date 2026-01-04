@@ -26,7 +26,7 @@ class _SetFlashcardsPageState extends State<SetFlashcardsPage> {
     setState(() => _isLoading = true);
     try {
       final all = await FlashcardService.getAllFlashcards();
-      final filtered = all.where((c) => c.setId == widget.setId).toList();
+      final filtered = all.where((c) => c.deckId == widget.setId).toList();
       setState(() {
         _cards = filtered;
         _isLoading = false;
