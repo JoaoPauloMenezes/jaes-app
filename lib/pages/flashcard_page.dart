@@ -7,7 +7,7 @@ import '../enums/flashcard_state.dart';
 import '../models/short_term_memo.dart';
 // Firebase services are not directly used here; they were removed to fix analyzer warnings.
 import '../services/flashcard_service.dart';
-import '../services/set_of_cards_service.dart';
+import '../services/deck_service.dart';
 import '../services/short_term_memo_service.dart';
 
 class FlashcardPage extends StatefulWidget {
@@ -96,25 +96,25 @@ class _FlashcardPageState extends State<FlashcardPage> {
 
   Future<void> _loadActiveCards() async {
     try {
-      // First, try to load sets from local database
-      List<dynamic> sets = await SetOfCardsService.getAllSets();
+      // First, try to load decks from local database
+      List<dynamic> decks = await DeckService.getAllDecks();
       
-      // If no sets in local database, load from Firebase and save locally
-      // if (sets.isEmpty) {
-      //   print('No sets in local database, loading from Firebase...');
-      //   sets = await FirebaseSetOfCardsService.getAllSets();
+      // If no decks in local database, load from Firebase and save locally
+      // if (decks.isEmpty) {
+      //   print('No decks in local database, loading from Firebase...');
+      //   decks = await FirebaseDeckService.getAllDecks();
         
-      //   if (sets.isNotEmpty) {
-      //     // Save Firebase sets to local database
-      //     await SetOfCardsService.saveSets(sets);
-      //     print('Saved ${sets.length} sets from Firebase to local database');
+      //   if (decks.isNotEmpty) {
+      //     // Save Firebase decks to local database
+      //     await DeckService.saveDecks(decks);
+      //     print('Saved ${decks.length} decks from Firebase to local database');
       //   }
       // }
       
-      // Find active sets
-      final activeSets = sets.where((set) => set.isActive).toList();
+      // Find active decks
+      final activeDecks = decks.where((deck) => deck.isActive).toList();
 
-      if (activeSets.isEmpty) {
+      if (activeDecks.isEmpty) {
         setState(() {
           _activeCards = [];
           _isLoading = false;
@@ -126,7 +126,7 @@ class _FlashcardPageState extends State<FlashcardPage> {
       List<Flashcard> allCards = await FlashcardService.getAllFlashcards();
       
       // If no flashcards in local database, load from Firebase
-      // if (allCards.isEmpty && sets.isNotEmpty) {
+      // if (allCards.isEmpty && decks.isNotEmpty) {
       //   print('No flashcards in local database, loading from Firebase...');
       //   allCards = await FirebaseFlashcardService.getAllFlashcards();
         
@@ -137,17 +137,17 @@ class _FlashcardPageState extends State<FlashcardPage> {
       //   }
       // }
       
-      // Filter cards by active sets
-      final activeSetIds = activeSets.map((set) => set.id).toSet();
-        final cardsFromActiveSets = allCards
-          .where((card) => card.setId != null && activeSetIds.contains(card.setId) && (card.isEnabled == true))
+      // Filter cards by active decks
+      final activeDeckIds = activeDecks.map((deck) => deck.id).toSet();
+        final cardsFromActiveDecks = allCards
+          .where((card) => card.deckId != null && activeDeckIds.contains(card.deckId) && (card.isEnabled == true))
           .toList();
 
       // Shuffle the cards for random order
-      cardsFromActiveSets.shuffle();
+      cardsFromActiveDecks.shuffle();
 
       setState(() {
-        _activeCards = cardsFromActiveSets;
+        _activeCards = cardsFromActiveDecks;
         _isLoading = false;
       });
     } catch (e) {

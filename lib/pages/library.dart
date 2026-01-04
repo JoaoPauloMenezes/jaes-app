@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
-import '../models/set_of_cards.dart';
+import '../models/deck.dart';
 import 'add_flashcard_screen.dart';
-import 'set_flashcards_page.dart';
-import '../services/firebase_set_of_cards_service.dart';
+import 'deck_flashcards_page.dart';
+import '../services/firebase_deck_service.dart';
 
 
 class LibraryPage extends StatefulWidget {
@@ -15,34 +15,34 @@ class LibraryPage extends StatefulWidget {
 }
 
 class _LibraryPageState extends State<LibraryPage> {
-  List<SetOfCards> _sets = [];
+  List<Deck> _decks = [];
 
   @override
   void initState() {
     super.initState();
-    _loadSets();
+    _loadDecks();
   }
 
-  Future<void> _loadSets() async {
+  Future<void> _loadDecks() async {
     final prefs = await SharedPreferences.getInstance();
-    final setsStringList = prefs.getStringList('sets') ?? [];
+    final decksStringList = prefs.getStringList('decks') ?? [];
     setState(() {
-      _sets = setsStringList
-          .map((e) => SetOfCards.fromJson(json.decode(e)))
+      _decks = decksStringList
+          .map((e) => Deck.fromJson(json.decode(e)))
           .toList();
     });
   }
 
-  Future<void> _addSet() async {
+  Future<void> _addDeck() async {
     final prefs = await SharedPreferences.getInstance();
     final titleController = TextEditingController();
     final descController = TextEditingController();
     bool isActive = true;
 
-    final result = await showDialog<SetOfCards>(
+    final result = await showDialog<Deck>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Add Set of Cards'),
+        title: const Text('Add Deck'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -82,7 +82,7 @@ class _LibraryPageState extends State<LibraryPage> {
                   descController.text.isNotEmpty) {
                 Navigator.pop(
                   context,
-                  SetOfCards(
+                  Deck(
                     title: titleController.text,
                     description: descController.text,
                     isActive: isActive,
@@ -98,16 +98,16 @@ class _LibraryPageState extends State<LibraryPage> {
 
     if (result != null) {
       setState(() {
-        _sets.add(result);
+        _decks.add(result);
       });
       // Save to local database
       await prefs.setStringList(
-        'sets',
-        _sets.map((e) => json.encode(e.toJson())).toList(),
+        'decks',
+        _decks.map((e) => json.encode(e.toJson())).toList(),
       );
       // Save to Firebase
       try {
-        await FirebaseSetOfCardsService.saveSet(result);
+        await FirebaseDeckService.saveDeck(result);
         print('Set saved to Firebase: ${result.title}');
       } catch (e) {
         print('Error saving set to Firebase: $e');
@@ -118,83 +118,83 @@ class _LibraryPageState extends State<LibraryPage> {
     }
   }
 
-  Future<void> _deleteSet(int index) async {
+  Future<void> _deleteDeck(int index) async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _sets.removeAt(index);
+      _decks.removeAt(index);
     });
     await prefs.setStringList(
-      'sets',
-      _sets.map((e) => json.encode(e.toJson())).toList(),
+      'decks',
+      _decks.map((e) => json.encode(e.toJson())).toList(),
     );
   }
 
   Future<void> _toggleActive(int index) async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _sets[index].isActive = !_sets[index].isActive;
+      _decks[index].isActive = !_decks[index].isActive;
     });
     await prefs.setStringList(
-      'sets',
-      _sets.map((e) => json.encode(e.toJson())).toList(),
+      'decks',
+      _decks.map((e) => json.encode(e.toJson())).toList(),
     );
-    // Sync updated set to Firebase
+    // Sync updated deck to Firebase
     try {
-      await FirebaseSetOfCardsService.updateSet(_sets[index]);
-      print('Set updated in Firebase: ${_sets[index].title}');
+      await FirebaseDeckService.updateDeck(_decks[index]);
+      print('Deck updated in Firebase: ${_decks[index].title}');
     } catch (e) {
-      print('Error updating set in Firebase: $e');
+      print('Error updating deck in Firebase: $e');
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Your Flashcard Sets')),
+      appBar: AppBar(title: const Text('Your Flashcard Decks')),
       body: ListView.builder(
-        itemCount: _sets.length,
+        itemCount: _decks.length,
         itemBuilder: (context, index) {
-          final set = _sets[index];
+          final deck = _decks[index];
           return Card(
             child: ListTile(
-              title: Text(set.title),
-              subtitle: Text(set.description),
+              title: Text(deck.title),
+              subtitle: Text(deck.description),
               leading: Icon(
-                set.isActive ? Icons.check_circle : Icons.cancel,
-                color: set.isActive ? Colors.green : Colors.grey,
+                deck.isActive ? Icons.check_circle : Icons.cancel,
+                color: deck.isActive ? Colors.green : Colors.grey,
               ),
               trailing: PopupMenuButton<String>(
                 onSelected: (value) async {
                   if (value == 'toggle') {
                     _toggleActive(index);
                   } else if (value == 'view_cards') {
-                    // Open page that lists all flashcards from this set
+                    // Open page that lists all flashcards from this deck
                     await Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => SetFlashcardsPage(
-                          setId: set.id,
-                          setTitle: set.title,
+                        builder: (context) => DeckFlashcardsPage(
+                          deckId: deck.id,
+                          deckTitle: deck.title,
                         ),
                       ),
                     );
                   } else if (value == 'add_card') {
-                    // Open the AddFlashcardScreen and pass the set id
+                    // Open the AddFlashcardScreen and pass the deck id
                     final result = await Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => AddFlashcardScreen(setId: set.id),
+                        builder: (context) => AddFlashcardScreen(deckId: deck.id),
                       ),
                     );
                     // If a flashcard was added, you may want to refresh UI or data
                     if (result == true) {
-                      // For now, just reload sets (if flashcards are stored separately)
+                      // For now, just reload decks (if flashcards are stored separately)
                       setState(() {});
                     }
                   } else if (value == 'delete') {
-                    _deleteSet(index);
+                    _deleteDeck(index);
                   } else if (value == 'export') {
-                    final jsonString = json.encode(set.toJson());
+                    final jsonString = json.encode(deck.toJson());
                     await showDialog(
                       context: context,
                       builder: (context) => AlertDialog(
@@ -226,11 +226,11 @@ class _LibraryPageState extends State<LibraryPage> {
                     child: Row(
                       children: [
                         Icon(
-                          set.isActive ? Icons.visibility_off : Icons.visibility,
-                          color: set.isActive ? Colors.grey : Colors.green,
+                          deck.isActive ? Icons.visibility_off : Icons.visibility,
+                          color: deck.isActive ? Colors.grey : Colors.green,
                         ),
                         const SizedBox(width: 8),
-                        Text(set.isActive ? 'Mark as inactive' : 'Mark as active'),
+                        Text(deck.isActive ? 'Mark as inactive' : 'Mark as active'),
                       ],
                     ),
                   ),
@@ -240,7 +240,7 @@ class _LibraryPageState extends State<LibraryPage> {
                       children: const [
                         Icon(Icons.list, color: Colors.blue),
                         SizedBox(width: 8),
-                        Text('View FlashCards'),
+                        Text('View Flashcards'),
                       ],
                     ),
                   ),
@@ -271,7 +271,7 @@ class _LibraryPageState extends State<LibraryPage> {
         },
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _addSet,
+        onPressed: _addDeck,
         child: const Icon(Icons.add),
       ),
     );
