@@ -12,12 +12,16 @@ class CardContainer extends StatefulWidget {
     this.cardNumber,
     this.frontText,
     this.backText,
+    this.onShowBack,
+    this.onShowFront,
   });
 
   final double? forcedHeight;
   final int? cardNumber;
   final String? frontText;
   final String? backText;
+  final ValueChanged<String?>? onShowBack;
+  final VoidCallback? onShowFront;
 
   @override
   State<CardContainer> createState() => _CardContainerState();
@@ -48,10 +52,18 @@ class _CardContainerState extends State<CardContainer>
         setState(() {
           isFront = false;
         });
+        // Notify parent that the back is now visible
+        try {
+          widget.onShowBack?.call(widget.backText);
+        } catch (_) {}
       } else if (_cardFlipController.value < 0.5 && !isFront) {
         setState(() {
           isFront = true;
         });
+        // Notify parent that the front is now visible
+        try {
+          widget.onShowFront?.call();
+        } catch (_) {}
       }
     });
 
@@ -93,11 +105,11 @@ class _CardContainerState extends State<CardContainer>
 
   @override
   Widget build(BuildContext context) {
-    // Decide the height to display: prefer forcedHeight passed from the
-    // parent, otherwise use the measured maxHeight. A sensible fallback is
-    // 150 so the UI doesn't collapse while measuring.
-    // final double displayHeight = (widget.forcedHeight ?? maxHeight ?? 50.0);
-    final double displayHeight = 200.0;
+    // Decide the height to display: prefer the `forcedHeight` passed from
+    // the parent (FlashcardPage). If not provided, use the measured
+    // `maxHeight` (from front/back), and finally fall back to a sensible
+    // minimum so the UI doesn't collapse while measuring.
+    final double displayHeight = (widget.forcedHeight ?? maxHeight ?? 150.0) - 80.0;
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.spaceAround,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '/models/flashcard.dart';
+import '/services/firebase_flashcard_service.dart';
 import '/services/flashcard_service.dart';
 
 class AddFlashcardScreen extends StatefulWidget {
@@ -52,6 +53,10 @@ class _AddFlashcardScreenState extends State<AddFlashcardScreen> {
         createdAt: DateTime.now(),
       );
 
+      // Save to Firebase
+      await FirebaseFlashcardService.saveFlashcard(flashcard);
+      
+      // Sync to local database
       await FlashcardService.saveFlashcard(flashcard);
 
       if (mounted) {

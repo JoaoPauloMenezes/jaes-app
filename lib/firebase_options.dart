@@ -46,18 +46,9 @@ class DefaultFirebaseOptions {
     messagingSenderId: '1079834747063',
     projectId: 'jaes-51995',
     authDomain: 'jaes-51995.firebaseapp.com',
+    databaseURL: 'https://jaes-51995-default-rtdb.firebaseio.com',
     storageBucket: 'jaes-51995.firebasestorage.app',
     measurementId: 'G-2EHF1SHWS7',
-  );
-
-  static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyAb0_3Wzj2xhhlfxbLSGwrTxdVQDEzXq1k',
-    appId: '1:1079834747063:ios:5ea02cf508259fd5bdad32',
-    messagingSenderId: '1079834747063',
-    projectId: 'jaes-51995',
-    storageBucket: 'jaes-51995.firebasestorage.app',
-    androidClientId: '1079834747063-s8s8bdpbueggnv6bkttd5mfa1fhgeqes.apps.googleusercontent.com',
-    iosBundleId: 'com.example.app1',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
@@ -65,7 +56,19 @@ class DefaultFirebaseOptions {
     appId: '1:1079834747063:android:fe1b6de45c8f7b7dbdad32',
     messagingSenderId: '1079834747063',
     projectId: 'jaes-51995',
+    databaseURL: 'https://jaes-51995-default-rtdb.firebaseio.com',
     storageBucket: 'jaes-51995.firebasestorage.app',
+  );
+
+  static const FirebaseOptions ios = FirebaseOptions(
+    apiKey: 'AIzaSyAb0_3Wzj2xhhlfxbLSGwrTxdVQDEzXq1k',
+    appId: '1:1079834747063:ios:5ea02cf508259fd5bdad32',
+    messagingSenderId: '1079834747063',
+    projectId: 'jaes-51995',
+    databaseURL: 'https://jaes-51995-default-rtdb.firebaseio.com',
+    storageBucket: 'jaes-51995.firebasestorage.app',
+    androidClientId: '1079834747063-s8s8bdpbueggnv6bkttd5mfa1fhgeqes.apps.googleusercontent.com',
+    iosBundleId: 'com.example.app1',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
@@ -73,6 +76,7 @@ class DefaultFirebaseOptions {
     appId: '1:1079834747063:ios:5ea02cf508259fd5bdad32',
     messagingSenderId: '1079834747063',
     projectId: 'jaes-51995',
+    databaseURL: 'https://jaes-51995-default-rtdb.firebaseio.com',
     storageBucket: 'jaes-51995.firebasestorage.app',
     androidClientId: '1079834747063-s8s8bdpbueggnv6bkttd5mfa1fhgeqes.apps.googleusercontent.com',
     iosBundleId: 'com.example.app1',
@@ -84,6 +88,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '1079834747063',
     projectId: 'jaes-51995',
     authDomain: 'jaes-51995.firebaseapp.com',
+    databaseURL: 'https://jaes-51995-default-rtdb.firebaseio.com',
     storageBucket: 'jaes-51995.firebasestorage.app',
     measurementId: 'G-2EHF1SHWS7',
   );

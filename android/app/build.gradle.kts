@@ -31,6 +31,7 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        setProperty("archivesBaseName", "JAES-$versionName-$versionCode")
     }
 
     buildTypes {

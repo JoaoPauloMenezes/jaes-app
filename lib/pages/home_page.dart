@@ -18,7 +18,7 @@ class _HomeScreenState extends State<HomeScreen> {
   static final List<Widget> _pages = <Widget>[
     FlashcardPage(),
     LibraryPage(),
-    CalendarPage(),
+    // CalendarPage(),
     ConfigScreen(),
   ];
 
@@ -44,10 +44,10 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icon(Icons.local_library, color: Constants.primaryColor),
             label: 'Library',
           ),
-          NavigationDestination(
-            icon: Icon(Icons.calendar_month, color: Constants.primaryColor),
-            label: 'Calendar',
-          ),
+          // NavigationDestination(
+          //   icon: Icon(Icons.calendar_month, color: Constants.primaryColor),
+          //   label: 'Calendar',
+          // ),
           NavigationDestination(
             icon: Icon(Icons.account_circle, color: Constants.primaryColor),
             label: 'Account',

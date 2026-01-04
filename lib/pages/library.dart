@@ -3,6 +3,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../models/set_of_cards.dart';
 import 'add_flashcard_screen.dart';
+import 'set_flashcards_page.dart';
+import '../services/firebase_set_of_cards_service.dart';
+
 
 class LibraryPage extends StatefulWidget {
   const LibraryPage({super.key});
@@ -97,10 +100,21 @@ class _LibraryPageState extends State<LibraryPage> {
       setState(() {
         _sets.add(result);
       });
+      // Save to local database
       await prefs.setStringList(
         'sets',
         _sets.map((e) => json.encode(e.toJson())).toList(),
       );
+      // Save to Firebase
+      try {
+        await FirebaseSetOfCardsService.saveSet(result);
+        print('Set saved to Firebase: ${result.title}');
+      } catch (e) {
+        print('Error saving set to Firebase: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to sync to Firebase: $e')),
+        );
+      }
     }
   }
 
@@ -124,6 +138,13 @@ class _LibraryPageState extends State<LibraryPage> {
       'sets',
       _sets.map((e) => json.encode(e.toJson())).toList(),
     );
+    // Sync updated set to Firebase
+    try {
+      await FirebaseSetOfCardsService.updateSet(_sets[index]);
+      print('Set updated in Firebase: ${_sets[index].title}');
+    } catch (e) {
+      print('Error updating set in Firebase: $e');
+    }
   }
 
   @override
@@ -146,6 +167,17 @@ class _LibraryPageState extends State<LibraryPage> {
                 onSelected: (value) async {
                   if (value == 'toggle') {
                     _toggleActive(index);
+                  } else if (value == 'view_cards') {
+                    // Open page that lists all flashcards from this set
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => SetFlashcardsPage(
+                          setId: set.id,
+                          setTitle: set.title,
+                        ),
+                      ),
+                    );
                   } else if (value == 'add_card') {
                     // Open the AddFlashcardScreen and pass the set id
                     final result = await Navigator.push(
@@ -199,6 +231,16 @@ class _LibraryPageState extends State<LibraryPage> {
                         ),
                         const SizedBox(width: 8),
                         Text(set.isActive ? 'Mark as inactive' : 'Mark as active'),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'view_cards',
+                    child: Row(
+                      children: const [
+                        Icon(Icons.list, color: Colors.blue),
+                        SizedBox(width: 8),
+                        Text('View FlashCards'),
                       ],
                     ),
                   ),

@@ -26,7 +26,7 @@ class FlashcardService {
 
   /// Save multiple flashcards to SharedPreferences
   /// Returns true if successful, false otherwise
-  static Future<bool> saveFlashcards(List<Flashcard> flashcards) async {
+  static Future<bool> saveFlashcards(List<dynamic> flashcards) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final jsonList = flashcards

@@ -11,7 +11,7 @@ class BackCard extends StatelessWidget {
     return Card(
       key: const ValueKey('back'),
       elevation: 8,
-      color: Colors.orange,
+      color: Colors.white,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: ConstrainedBox(
@@ -19,20 +19,23 @@ class BackCard extends StatelessWidget {
             maxWidth: 500.0, // Set your desired maximum width here
             minWidth: 250,
             minHeight: 150,
-            maxHeight: 200.0,
-          ), // Optional: Set a maximum height if needed
+          ),
           child: Stack(
           children: [
-            // Make the long back-text scrollable inside the constrained box
-            SingleChildScrollView(
-              padding: EdgeInsets.zero,
+            // Display the back text without internal scrolling so the
+            // parent `CardContainer` handles overall layout and avoids
+            // nested scroll interactions.
+            Center(
               child: Text(
-                text ?? "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries.",
+                text ?? "Lorem Ipsum is simply dummy text of the printing and typesetting industry.",
                 style: const TextStyle(
-                  color: Colors.white,
+                  color: Colors.black,
                   fontSize: 24,
                 ),
                 textAlign: TextAlign.center,
+                softWrap: true,
+                maxLines: 12,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
             if (number != null)

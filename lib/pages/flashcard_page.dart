@@ -1,8 +1,14 @@
 import '/card/card_container.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_tts/flutter_tts.dart';
+import 'dart:async';
 import '../models/flashcard.dart';
+import '../enums/flashcard_state.dart';
+import '../models/short_term_memo.dart';
+// Firebase services are not directly used here; they were removed to fix analyzer warnings.
 import '../services/flashcard_service.dart';
 import '../services/set_of_cards_service.dart';
+import '../services/short_term_memo_service.dart';
 
 class FlashcardPage extends StatefulWidget {
   const FlashcardPage({super.key});
@@ -14,17 +20,98 @@ class FlashcardPage extends StatefulWidget {
 class _FlashcardPageState extends State<FlashcardPage> {
   List<Flashcard> _activeCards = [];
   bool _isLoading = true;
+  late final FlutterTts _flutterTts;
+  Timer? _speakDelayTimer;
+  bool _isSpeaking = false;
+  final Map<String, bool> _isBackVisible = {};
 
   @override
   void initState() {
     super.initState();
+    _initTts();
     _loadActiveCards();
+  }
+
+  Future<void> _initTts() async {
+    _flutterTts = FlutterTts();
+    try {
+      await _flutterTts.setLanguage('en-US');
+      await _flutterTts.setSpeechRate(0.45);
+      _flutterTts.setStartHandler(() {
+        setState(() {
+          _isSpeaking = true;
+        });
+      });
+      _flutterTts.setCompletionHandler(() {
+        setState(() {
+          _isSpeaking = false;
+        });
+      });
+      _flutterTts.setCancelHandler(() {
+        setState(() {
+          _isSpeaking = false;
+        });
+      });
+      _flutterTts.setErrorHandler((msg) {
+        setState(() {
+          _isSpeaking = false;
+        });
+      });
+    } catch (e) {
+      // ignore TTS init errors
+      print('TTS init error: $e');
+    }
+  }
+
+  Future<void> _speakText(String text) async {
+    if (text.isEmpty) return;
+    try {
+      await _flutterTts.stop();
+      await _flutterTts.speak(text);
+    } catch (e) {
+      print('TTS speak error: $e');
+    }
+  }
+
+  void _cancelPendingSpeak({bool stopTts = true}) async {
+    try {
+      _speakDelayTimer?.cancel();
+      _speakDelayTimer = null;
+      if (stopTts) await _flutterTts.stop();
+    } catch (_) {}
+  }
+
+  void _speakCurrentCard() {
+    if (_activeCards.isEmpty) return;
+    // top card is at index 0
+    final top = _activeCards[0];
+    // toggle: if speaking, stop; otherwise speak
+    if (_isSpeaking) {
+      _cancelPendingSpeak();
+    } else {
+      _cancelPendingSpeak(stopTts: false);
+      _speakText(top.frontText);
+    }
   }
 
   Future<void> _loadActiveCards() async {
     try {
-      // Get all sets and find active ones
-      final sets = await SetOfCardsService.getAllSets();
+      // First, try to load sets from local database
+      List<dynamic> sets = await SetOfCardsService.getAllSets();
+      
+      // If no sets in local database, load from Firebase and save locally
+      // if (sets.isEmpty) {
+      //   print('No sets in local database, loading from Firebase...');
+      //   sets = await FirebaseSetOfCardsService.getAllSets();
+        
+      //   if (sets.isNotEmpty) {
+      //     // Save Firebase sets to local database
+      //     await SetOfCardsService.saveSets(sets);
+      //     print('Saved ${sets.length} sets from Firebase to local database');
+      //   }
+      // }
+      
+      // Find active sets
       final activeSets = sets.where((set) => set.isActive).toList();
 
       if (activeSets.isEmpty) {
@@ -35,11 +122,25 @@ class _FlashcardPageState extends State<FlashcardPage> {
         return;
       }
 
-      // Get all flashcards and filter by active sets
-      final allCards = await FlashcardService.getAllFlashcards();
+      // Get flashcards from local database
+      List<Flashcard> allCards = await FlashcardService.getAllFlashcards();
+      
+      // If no flashcards in local database, load from Firebase
+      // if (allCards.isEmpty && sets.isNotEmpty) {
+      //   print('No flashcards in local database, loading from Firebase...');
+      //   allCards = await FirebaseFlashcardService.getAllFlashcards();
+        
+      //   if (allCards.isNotEmpty) {
+      //     // Save Firebase flashcards to local database
+      //     await FlashcardService.saveFlashcards(allCards);
+      //     print('Saved ${allCards.length} flashcards from Firebase to local database');
+      //   }
+      // }
+      
+      // Filter cards by active sets
       final activeSetIds = activeSets.map((set) => set.id).toSet();
-      final cardsFromActiveSets = allCards
-          .where((card) => card.setId != null && activeSetIds.contains(card.setId))
+        final cardsFromActiveSets = allCards
+          .where((card) => card.setId != null && activeSetIds.contains(card.setId) && (card.isEnabled == true))
           .toList();
 
       // Shuffle the cards for random order
@@ -59,7 +160,16 @@ class _FlashcardPageState extends State<FlashcardPage> {
   }
 
   @override
+  void dispose() {
+    try {
+      _flutterTts.stop();
+    } catch (_) {}
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // Simple, robust build that avoids nested scrolling and keeps widgets balanced.
     if (_isLoading) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
@@ -68,116 +178,120 @@ class _FlashcardPageState extends State<FlashcardPage> {
 
     if (_activeCards.isEmpty) {
       return Scaffold(
-        appBar: AppBar(
-          title: const Text('Flashcards'),
-        ),
-        body: const Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.note, size: 64, color: Colors.grey),
-              SizedBox(height: 16),
-              Text(
-                'No active flashcards',
-                style: TextStyle(fontSize: 18, color: Colors.grey),
-              ),
-            ],
-          ),
-        ),
+        appBar: AppBar(title: const Text('Flashcards')),
+        body: const Center(child: Text('No active flashcards')),
       );
     }
 
-    // Deck configuration
-    final double cardHeight = 220.0;
+    // Compute dimensions
+    final double screenHeight = MediaQuery.of(context).size.height;
+    final double topPadding = MediaQuery.of(context).padding.top;
+    final double appBarHeight = kToolbarHeight;
+    const double pageVerticalPadding = 48.0;
+    final double availableHeight = screenHeight - topPadding - appBarHeight - pageVerticalPadding;
+    final double cardHeight = availableHeight * 0.9;
     final double cardWidth = MediaQuery.of(context).size.width;
 
-    // Create indices from loaded cards
-    final List<int> cardIndices = List.generate(_activeCards.length, (i) => i);
-
-    // Stacking offsets (top) for the deck: index 0 is the top card, index
-    // increases downward. We compute offsets so the stack grows downward.
-    const double spacing = 14.0;
-    final int n = cardIndices.length;
-    final List<double> topOffsets = List<double>.generate(
-      n,
-      (i) => i * spacing,
-    );
-    final double maxOffset = n > 0 ? topOffsets.last : 0.0;
-
-    // compute a dynamic safety padding to avoid 1-2 pixel overflows caused by
-    // borders and device pixel rounding. Use the same borderWidth used when
-    // creating cards (2.5) so the parent box grows just enough.
-    final double borderWidthUsed = 2.5;
-    final double devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
-    // half the border + a small anti-aliasing allowance in logical pixels
-    final double safetyPadding = (borderWidthUsed / 2.0) + (2.0 / devicePixelRatio);
+    // Stacking offsets
+    const double spacing = 12.0;
+    final int n = _activeCards.length;
+    final double maxOffset = (n - 1) * spacing;
+    final double safetyPadding = 8.0;
+    final double extraReserve = maxOffset.clamp(0.0, availableHeight * 0.08) + safetyPadding;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Flashcards'),
+      appBar: AppBar(title: const Text('Flashcards')),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _speakCurrentCard,
+        child: const Icon(Icons.volume_up),
       ),
-      body: Container(
-        color: Colors.white,
-        child: Center(
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 24.0),
-              child: SizedBox(
-                width: cardWidth,
-                // Add a dynamic safety margin and reserve space for the deepest
-                // stacked card (maxOffset) so no child overflows the parent.
-                height: cardHeight + maxOffset + safetyPadding,
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  // Render from bottom to top so the top card paints last.
-                  children: List.generate(n, (i) => i).reversed.map((index) {
-                    // index corresponds to position in cardIndices where 0 is top.
-                    final int cardIndex = cardIndices[index];
-                    final flashcard = _activeCards[cardIndex];
-                    // Compute color gradient: top card (index 0) = no white overlay,
-                    // bottom card (deepest) = white overlay at 0.6 opacity.
-                    final double whiteOverlayOpacity = n > 1 ? (index / (n - 1)) * 0.6 : 0.0;
-                    return Positioned(
-                      top: topOffsets[index],
-                      left: 0,
-                      right: 0,
-                      child: Align(
-                        alignment: Alignment.topCenter,
-                        child: _SwipeableCard(
-                          key: ValueKey(flashcard.id),
-                          cardId: flashcard.id,
-                          width: cardWidth,
-                          height: cardHeight + 80.0,
-                          // border style adjustments (unused now)
-                          borderColor: Colors.grey.shade400,
-                          borderWidth: 2.5,
-                          whiteOverlayOpacity: whiteOverlayOpacity,
-                          child: CardContainer(
-                            forcedHeight: cardHeight + 80.0,
-                            cardNumber: cardIndex + 1,
-                            frontText: flashcard.frontText,
-                            backText: flashcard.backText,
-                          ),
-                          onRemove: () {
-                            setState(() {
-                              _activeCards.removeAt(cardIndex);
-                            });
-                          },
-                          onMoveToEnd: () {
-                            setState(() {
-                              // move to the back/bottom of the deck by appending
-                              // so it becomes the deepest card
-                              final card = _activeCards.removeAt(cardIndex);
-                              _activeCards.add(card);
-                            });
-                          },
-                        ),
-                      ),
-                    );
-                  }).toList(),
+      body: Center(
+        child: SizedBox(
+          width: cardWidth,
+          height: cardHeight + extraReserve,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: List.generate(n, (i) => i).reversed.map((index) {
+              final int cardIndex = index;
+              final flashcard = _activeCards[cardIndex];
+              final double topOffset = (cardIndex) * spacing;
+              final double whiteOverlayOpacity = n > 1 ? (index / (n - 1)) * 0.6 : 0.0;
+              return Positioned(
+                top: topOffset,
+                left: 0,
+                right: 0,
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: _SwipeableCard(
+                    key: ValueKey(flashcard.id),
+                    cardId: flashcard.id,
+                    width: cardWidth,
+                    height: cardHeight,
+                    allowSwipe: _isBackVisible[flashcard.id] ?? false,
+                    borderColor: Colors.grey.shade400,
+                    borderWidth: 2.5,
+                    whiteOverlayOpacity: whiteOverlayOpacity,
+                    child: CardContainer(
+                      forcedHeight: cardHeight,
+                      cardNumber: cardIndex + 1,
+                      frontText: flashcard.frontText,
+                      backText: flashcard.backText,
+                      onShowBack: (text) {
+                        setState(() {
+                          _isBackVisible[flashcard.id] = true;
+                        });
+                        _cancelPendingSpeak();
+                        if (text != null && text.isNotEmpty) {
+                          _speakDelayTimer = Timer(const Duration(milliseconds: 700), () {
+                            _speakText(text);
+                          });
+                        }
+                      },
+                      onShowFront: () {
+                        setState(() {
+                          _isBackVisible[flashcard.id] = false;
+                        });
+                        _cancelPendingSpeak();
+                      },
+                    ),
+                    onRemove: () async {
+                      final removed = _activeCards[cardIndex];
+                      // Create ShortTermMemo record for "Study Again" (passed = false)
+                      final memo = ShortTermMemo(
+                        flashcardId: removed.id,
+                        lastTestDate: DateTime.now(),
+                        passed: false,
+                      );
+                      await ShortTermMemoService.saveMemo(memo);
+                      setState(() {
+                        _activeCards.removeAt(cardIndex);
+                        _isBackVisible.remove(removed.id);
+                      });
+                    },
+                    onMoveToEnd: () async {
+                      final card = _activeCards[cardIndex];
+                      // Update flashcard state to "known"
+                      final updatedCard = card.copyWith(
+                        state: FlashcardState.known,
+                      );
+                      // Save updated card to local database
+                      await FlashcardService.updateFlashcard(updatedCard);
+                      // Create ShortTermMemo record for "Got it" (passed = true)
+                      final memo = ShortTermMemo(
+                        flashcardId: card.id,
+                        lastTestDate: DateTime.now(),
+                        passed: true,
+                      );
+                      await ShortTermMemoService.saveMemo(memo);
+                      setState(() {
+                        _activeCards.removeAt(cardIndex);
+                        _activeCards.add(updatedCard);
+                      });
+                    },
+                  ),
                 ),
-              ),
-            ),
+              );
+            }).toList(),
           ),
         ),
       ),
@@ -194,6 +308,7 @@ class _SwipeableCard extends StatefulWidget {
     required this.cardId,
     required this.width,
     required this.height,
+    this.allowSwipe = true,
     required this.child,
     required this.onRemove,
     required this.onMoveToEnd,
@@ -205,6 +320,7 @@ class _SwipeableCard extends StatefulWidget {
   final String cardId;
   final double width;
   final double height;
+  final bool allowSwipe;
   final Widget child;
   final VoidCallback onRemove;
   final VoidCallback onMoveToEnd;
@@ -279,9 +395,9 @@ class _SwipeableCardState extends State<_SwipeableCard>
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: const [
-                      Icon(Icons.loop, color: Colors.blueGrey),
+                      Icon(Icons.loop, color: Colors.greenAccent),
                       SizedBox(width: 8.0),
-                      Text('Move to end', style: TextStyle(color: Colors.blueGrey)),
+                      Text('Got it', style: TextStyle(color: Colors.greenAccent)),
                     ],
                   ),
                 ),
@@ -298,7 +414,7 @@ class _SwipeableCardState extends State<_SwipeableCard>
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: const [
-                      Text('Remove', style: TextStyle(color: Colors.redAccent)),
+                      Text("Study Again", style: TextStyle(color: Colors.redAccent)),
                       SizedBox(width: 8.0),
                       Icon(Icons.delete, color: Colors.redAccent),
                     ],
@@ -314,6 +430,7 @@ class _SwipeableCardState extends State<_SwipeableCard>
             behavior: HitTestBehavior.translucent,
             onPanUpdate: (details) {
               if (_isAnimating) return;
+              if (!widget.allowSwipe) return;
               setState(() {
                 _offsetX += details.delta.dx;
                 // limit to a reasonable range
@@ -322,6 +439,7 @@ class _SwipeableCardState extends State<_SwipeableCard>
             },
             onPanEnd: (details) {
               if (_isAnimating) return;
+              if (!widget.allowSwipe) return;
               if (_offsetX.abs() > threshold) {
                 if (_offsetX > 0) {
                   // Swiped right -> move to end. Animate out to the right.

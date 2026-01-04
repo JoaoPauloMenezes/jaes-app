@@ -24,7 +24,7 @@ class SetOfCardsService {
   }
 
   /// Save multiple sets to SharedPreferences
-  static Future<bool> saveSets(List<SetOfCards> sets) async {
+  static Future<bool> saveSets(List<dynamic> sets) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final jsonList = sets
