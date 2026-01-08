@@ -5,12 +5,14 @@ class Deck {
   String title;
   String description;
   bool isActive;
+  String? userId; // Reference to a User
 
   Deck({
     String? id,
     required this.title,
     required this.description,
     required this.isActive,
+    this.userId,
   }) : id = id ?? const Uuid().v4();
 
   Map<String, dynamic> toJson() => {
@@ -18,6 +20,7 @@ class Deck {
         'title': title,
         'description': description,
         'isActive': isActive,
+        'userId': userId,
       };
 
   factory Deck.fromJson(Map<String, dynamic> json) => Deck(
@@ -25,5 +28,6 @@ class Deck {
         title: json['title'],
         description: json['description'],
         isActive: json['isActive'],
+        userId: json['userId'],
       );
 }

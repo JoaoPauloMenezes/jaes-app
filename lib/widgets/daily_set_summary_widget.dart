@@ -57,17 +57,17 @@ class DailySetSummaryWidget extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 60),
-            ElevatedButton.icon(
-              onPressed: onResetDaily,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Generate New Daily Set'),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
-                ),
-              ),
-            ),
+            // ElevatedButton.icon(
+            //   onPressed: onResetDaily,
+            //   icon: const Icon(Icons.refresh),
+            //   label: const Text('Generate New Daily Set'),
+            //   style: ElevatedButton.styleFrom(
+            //     padding: const EdgeInsets.symmetric(
+            //       horizontal: 24,
+            //       vertical: 12,
+            //     ),
+            //   ),
+            // ),
           ],
         ),
       ),

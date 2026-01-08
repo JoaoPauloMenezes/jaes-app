@@ -6,6 +6,7 @@ class Flashcard {
   final String frontText;
   final String backText;
   final String? deckId; // Reference to a Deck
+  final String? userId; // Reference to a User
   final bool isEnabled;
   final FlashcardState state;
   final DateTime createdAt;
@@ -16,6 +17,7 @@ class Flashcard {
     required this.frontText,
     required this.backText,
     this.deckId,
+    this.userId,
     this.isEnabled = true,
     this.state = FlashcardState.toLearn,
     DateTime? createdAt,
@@ -30,6 +32,7 @@ class Flashcard {
       'frontText': frontText,
       'backText': backText,
       'deckId': deckId,
+      'userId': userId,
       'isEnabled': isEnabled,
       'state': state.name,
       'createdAt': createdAt.toIso8601String(),
@@ -44,6 +47,7 @@ class Flashcard {
       frontText: json['frontText'] as String,
       backText: json['backText'] as String,
       deckId: json['deckId'] as String?,
+      userId: json['userId'] as String?,
       isEnabled: json['isEnabled'] == null ? true : json['isEnabled'] as bool,
       state: json['state'] != null ? FlashcardState.fromString(json['state'] as String) : FlashcardState.toLearn,
       createdAt: DateTime.parse(json['createdAt'] as String),
@@ -59,6 +63,7 @@ class Flashcard {
     String? frontText,
     String? backText,
     String? deckId,
+    String? userId,
     bool? isEnabled,
     FlashcardState? state,
     DateTime? createdAt,
@@ -69,6 +74,7 @@ class Flashcard {
       frontText: frontText ?? this.frontText,
       backText: backText ?? this.backText,
       deckId: deckId ?? this.deckId,
+      userId: userId ?? this.userId,
       isEnabled: isEnabled ?? this.isEnabled,
       state: state ?? this.state,
       createdAt: createdAt ?? this.createdAt,

@@ -21,7 +21,7 @@ class logoJaes extends StatelessWidget {
       margin: const EdgeInsets.only(top: 50, bottom: 20),
       decoration: BoxDecoration(
         image: DecorationImage(
-          image: AssetImage("../lib/assets/images/SchoolLogo.png"),
+          image: AssetImage("../lib/assets/images/SchoolLogoTransparente.png"),
           fit: BoxFit.cover,
         ),
       ),
