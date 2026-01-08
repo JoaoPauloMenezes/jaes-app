@@ -12,9 +12,12 @@ class FrontCard extends StatelessWidget {
       key: const ValueKey('front'),
       elevation: 8,
       color: Colors.blue,
-      child: SizedBox(
-        width: 250,
-        height: 50,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+          maxWidth: 500.0, // Set your desired maximum width here
+          minWidth: 250,
+          minHeight: 150,
+        ),
         child: Stack(
           children: [
             Center(

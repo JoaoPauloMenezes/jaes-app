@@ -38,7 +38,7 @@ class _CardContainerState extends State<CardContainer>
     super.initState();
 
     _cardFlipController = AnimationController(
-      duration: const Duration(seconds: 1),
+      duration: const Duration(milliseconds: 400),
       vsync: this,
     );
 

@@ -2,17 +2,17 @@ import 'package:flutter/material.dart';
 import '../models/flashcard.dart';
 import '../services/flashcard_service.dart';
 
-class SetFlashcardsPage extends StatefulWidget {
-  final String setId;
-  final String? setTitle;
+class DeckFlashcardsPage extends StatefulWidget {
+  final String deckId;
+  final String? deckTitle;
 
-  const SetFlashcardsPage({super.key, required this.setId, this.setTitle});
+  const DeckFlashcardsPage({super.key, required this.deckId, this.deckTitle});
 
   @override
-  State<SetFlashcardsPage> createState() => _SetFlashcardsPageState();
+  State<DeckFlashcardsPage> createState() => _DeckFlashcardsPageState();
 }
 
-class _SetFlashcardsPageState extends State<SetFlashcardsPage> {
+class _DeckFlashcardsPageState extends State<DeckFlashcardsPage> {
   List<Flashcard> _cards = [];
   bool _isLoading = true;
 
@@ -26,7 +26,7 @@ class _SetFlashcardsPageState extends State<SetFlashcardsPage> {
     setState(() => _isLoading = true);
     try {
       final all = await FlashcardService.getAllFlashcards();
-      final filtered = all.where((c) => c.deckId == widget.setId).toList();
+      final filtered = all.where((c) => c.deckId == widget.deckId).toList();
       setState(() {
         _cards = filtered;
         _isLoading = false;
@@ -43,14 +43,14 @@ class _SetFlashcardsPageState extends State<SetFlashcardsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.setTitle == null || widget.setTitle!.isEmpty
-            ? 'Set Flashcards'
-            : 'Cards — ${widget.setTitle}'),
+        title: Text(widget.deckTitle == null || widget.deckTitle!.isEmpty
+            ? 'Deck Flashcards'
+            : 'Cards — ${widget.deckTitle}'),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _cards.isEmpty
-              ? const Center(child: Text('No flashcards in this set'))
+              ? const Center(child: Text('No flashcards in this deck'))
               : ListView.builder(
                   itemCount: _cards.length,
                   itemBuilder: (context, index) {

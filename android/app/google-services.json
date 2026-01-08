@@ -13,7 +13,20 @@
           "package_name": "com.example.app1"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "1079834747063-1l9l9mnbbe6jrm9so8e2i6utllhbcu37.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.app1",
+            "certificate_hash": "5f1b4dc2dc138ea73164fa5187ff9ff1e4cefe73"
+          }
+        },
+        {
+          "client_id": "1079834747063-38vih8ljn7jirvpa33ispmfso1ggffdf.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAFYewPnExVsb6p--iU7umXPlS2PO85ghY"
@@ -21,7 +34,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1079834747063-38vih8ljn7jirvpa33ispmfso1ggffdf.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1079834747063-mcpc298rfga5pevtr9t0ba2tnjilm655.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.jaes.app"
+              }
+            }
+          ]
         }
       }
     },
@@ -32,7 +57,12 @@
           "package_name": "com.jae"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "1079834747063-38vih8ljn7jirvpa33ispmfso1ggffdf.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAFYewPnExVsb6p--iU7umXPlS2PO85ghY"
@@ -40,7 +70,55 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1079834747063-38vih8ljn7jirvpa33ispmfso1ggffdf.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1079834747063-mcpc298rfga5pevtr9t0ba2tnjilm655.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.jaes.app"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1079834747063:android:ea73e7863625e277bdad32",
+        "android_client_info": {
+          "package_name": "com.jaes"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1079834747063-38vih8ljn7jirvpa33ispmfso1ggffdf.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAFYewPnExVsb6p--iU7umXPlS2PO85ghY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1079834747063-38vih8ljn7jirvpa33ispmfso1ggffdf.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1079834747063-mcpc298rfga5pevtr9t0ba2tnjilm655.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.jaes.app"
+              }
+            }
+          ]
         }
       }
     },
@@ -51,7 +129,12 @@
           "package_name": "com.jaes.app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "1079834747063-38vih8ljn7jirvpa33ispmfso1ggffdf.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAFYewPnExVsb6p--iU7umXPlS2PO85ghY"
@@ -59,7 +142,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1079834747063-38vih8ljn7jirvpa33ispmfso1ggffdf.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1079834747063-mcpc298rfga5pevtr9t0ba2tnjilm655.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.jaes.app"
+              }
+            }
+          ]
         }
       }
     }

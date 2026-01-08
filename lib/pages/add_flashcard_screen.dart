@@ -4,11 +4,11 @@ import '/services/firebase_flashcard_service.dart';
 import '/services/flashcard_service.dart';
 
 class AddFlashcardScreen extends StatefulWidget {
-  final String setId;
+  final String deckId;
 
   const AddFlashcardScreen({
     Key? key,
-    required this.setId,
+    required this.deckId,
   }) : super(key: key);
 
   @override
@@ -47,7 +47,7 @@ class _AddFlashcardScreenState extends State<AddFlashcardScreen> {
     try {
       final flashcard = Flashcard(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
-        setId: widget.setId,
+        deckId: widget.deckId,
         frontText: _frontController.text,
         backText: _backController.text,
         createdAt: DateTime.now(),

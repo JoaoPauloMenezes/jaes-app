@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'firebase_options.dart';
-import 'pages/login_page.dart';
+import 'pages/firebase_login_page.dart';
 import 'pages/home_page.dart';
 
 
@@ -34,8 +34,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
 
       ),
-      // home: const LoginScreen(),
-      home: const HomeScreen(),
+      home: const FirebaseLoginPage(),
       debugShowCheckedModeBanner: false,
     );
   }

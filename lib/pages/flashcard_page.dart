@@ -1,14 +1,19 @@
 import '/card/card_container.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import '../models/flashcard.dart';
+import '../models/daily_flashcard_set.dart';
 import '../enums/flashcard_state.dart';
 import '../models/short_term_memo.dart';
+import '../widgets/daily_set_summary_widget.dart';
+import '../widgets/swipeable_card.dart';
 // Firebase services are not directly used here; they were removed to fix analyzer warnings.
 import '../services/flashcard_service.dart';
-import '../services/set_of_cards_service.dart';
+import '../services/deck_service.dart';
 import '../services/short_term_memo_service.dart';
+import '../services/daily_flashcard_set_service.dart';
 
 class FlashcardPage extends StatefulWidget {
   const FlashcardPage({super.key});
@@ -19,7 +24,10 @@ class FlashcardPage extends StatefulWidget {
 
 class _FlashcardPageState extends State<FlashcardPage> {
   List<Flashcard> _activeCards = [];
+  List<Flashcard> _testedCards = [];
+  List<Flashcard> _allActiveFlashcards = [];
   bool _isLoading = true;
+  bool _isStudying = false;
   late final FlutterTts _flutterTts;
   Timer? _speakDelayTimer;
   bool _isSpeaking = false;
@@ -35,8 +43,26 @@ class _FlashcardPageState extends State<FlashcardPage> {
   Future<void> _initTts() async {
     _flutterTts = FlutterTts();
     try {
+      // Load TTS settings from SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      final bool ttsEnabled = prefs.getBool('tts_enabled') ?? true;
+      final double ttsPitch = prefs.getDouble('tts_pitch') ?? 1.0;
+      final double ttsRate = prefs.getDouble('tts_rate') ?? 1.0;
+      final String ttsVoice = prefs.getString('tts_voice') ?? '';
+
+      // Apply TTS settings
       await _flutterTts.setLanguage('en-US');
-      await _flutterTts.setSpeechRate(0.45);
+      await _flutterTts.setPitch(ttsPitch);
+      await _flutterTts.setSpeechRate(ttsRate);
+      
+      if (ttsVoice.isNotEmpty) {
+        try {
+          await _flutterTts.setVoice({"name": ttsVoice, "locale": "en-US"});
+        } catch (e) {
+          print('Error setting voice: $e');
+        }
+      }
+
       _flutterTts.setStartHandler(() {
         setState(() {
           _isSpeaking = true;
@@ -81,42 +107,84 @@ class _FlashcardPageState extends State<FlashcardPage> {
     } catch (_) {}
   }
 
-  void _speakCurrentCard() {
+  void _speakCurrentCard() async {
     if (_activeCards.isEmpty) return;
-    // top card is at index 0
+    
+    // Check if TTS is enabled
+    final prefs = await SharedPreferences.getInstance();
+    final ttsEnabled = prefs.getBool('tts_enabled') ?? true;
+    if (!ttsEnabled) {
+      return; // TTS is disabled
+    }
+    
+    // Get the top card
     final top = _activeCards[0];
-    // toggle: if speaking, stop; otherwise speak
+    
+    // Determine which text is currently visible
+    final isBackShowing = _isBackVisible[top.id] ?? false;
+    final textToSpeak = isBackShowing ? top.backText : top.frontText;
+    
+    // Toggle: if speaking, stop; otherwise speak the visible text
     if (_isSpeaking) {
       _cancelPendingSpeak();
     } else {
       _cancelPendingSpeak(stopTts: false);
-      _speakText(top.frontText);
+      _speakText(textToSpeak);
     }
+  }
+
+  void _backToSummary() {
+    setState(() {
+      _isStudying = false;
+    });
+  }
+
+  void _startStudying() {
+    setState(() {
+      _isStudying = true;
+    });
+  }
+
+  Future<void> _resetDailySet() async {
+    // Clear the stored daily set to force generation of a new one
+    await DailyFlashcardSetService.clearStoredSet();
+    // Reset the page state
+    setState(() {
+      _activeCards = [];
+      _testedCards = [];
+      _allActiveFlashcards = [];
+      _isLoading = true;
+      _isBackVisible.clear();
+      _isStudying = false;
+    });
+    // Reload the flashcards
+    await _loadActiveCards();
   }
 
   Future<void> _loadActiveCards() async {
     try {
-      // First, try to load sets from local database
-      List<dynamic> sets = await SetOfCardsService.getAllSets();
+      // First, try to load decks from local database
+      List<dynamic> decks = await DeckService.getAllDecks();
       
-      // If no sets in local database, load from Firebase and save locally
-      // if (sets.isEmpty) {
-      //   print('No sets in local database, loading from Firebase...');
-      //   sets = await FirebaseSetOfCardsService.getAllSets();
+      // If no decks in local database, load from Firebase and save locally
+      // if (decks.isEmpty) {
+      //   print('No decks in local database, loading from Firebase...');
+      //   decks = await FirebaseDeckService.getAllDecks();
         
-      //   if (sets.isNotEmpty) {
-      //     // Save Firebase sets to local database
-      //     await SetOfCardsService.saveSets(sets);
-      //     print('Saved ${sets.length} sets from Firebase to local database');
+      //   if (decks.isNotEmpty) {
+      //     // Save Firebase decks to local database
+      //     await DeckService.saveDecks(decks);
+      //     print('Saved ${decks.length} decks from Firebase to local database');
       //   }
       // }
       
-      // Find active sets
-      final activeSets = sets.where((set) => set.isActive).toList();
+      // Find active decks
+      final activeDecks = decks.where((deck) => deck.isActive).toList();
 
-      if (activeSets.isEmpty) {
+      if (activeDecks.isEmpty) {
         setState(() {
           _activeCards = [];
+          _allActiveFlashcards = [];
           _isLoading = false;
         });
         return;
@@ -126,7 +194,7 @@ class _FlashcardPageState extends State<FlashcardPage> {
       List<Flashcard> allCards = await FlashcardService.getAllFlashcards();
       
       // If no flashcards in local database, load from Firebase
-      // if (allCards.isEmpty && sets.isNotEmpty) {
+      // if (allCards.isEmpty && decks.isNotEmpty) {
       //   print('No flashcards in local database, loading from Firebase...');
       //   allCards = await FirebaseFlashcardService.getAllFlashcards();
         
@@ -137,23 +205,42 @@ class _FlashcardPageState extends State<FlashcardPage> {
       //   }
       // }
       
-      // Filter cards by active sets
-      final activeSetIds = activeSets.map((set) => set.id).toSet();
-        final cardsFromActiveSets = allCards
-          .where((card) => card.setId != null && activeSetIds.contains(card.setId) && (card.isEnabled == true))
+      // Filter cards by active decks and enabled status
+      final activeDeckIds = activeDecks.map((deck) => deck.id).toSet();
+      final availableCards = allCards
+          .where((card) => card.deckId != null && 
+                  activeDeckIds.contains(card.deckId) && 
+                  (card.isEnabled == true))
           .toList();
 
-      // Shuffle the cards for random order
-      cardsFromActiveSets.shuffle();
+      // Get or create today's daily flashcard set
+      final dailySet = await DailyFlashcardSetService.getTodaysSet(availableCards);
+
+      if (dailySet == null || dailySet.flashcardIds.isEmpty) {
+        setState(() {
+          _activeCards = [];
+          _allActiveFlashcards = availableCards;
+          _isLoading = false;
+        });
+        return;
+      }
+
+      // Filter cards to only include those in today's daily set
+      final dailySetIds = dailySet.flashcardIds.toSet();
+      final cardsForToday = availableCards
+          .where((card) => dailySetIds.contains(card.id))
+          .toList();
 
       setState(() {
-        _activeCards = cardsFromActiveSets;
+        _activeCards = cardsForToday;
+        _allActiveFlashcards = availableCards;
         _isLoading = false;
       });
     } catch (e) {
       print('Error loading active cards: $e');
       setState(() {
         _activeCards = [];
+        _allActiveFlashcards = [];
         _isLoading = false;
       });
     }
@@ -169,17 +256,54 @@ class _FlashcardPageState extends State<FlashcardPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Simple, robust build that avoids nested scrolling and keeps widgets balanced.
+    // Show loading state
     if (_isLoading) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       );
     }
 
+    // If no active cards, show error message
     if (_activeCards.isEmpty) {
       return Scaffold(
         appBar: AppBar(title: const Text('Flashcards')),
         body: const Center(child: Text('No active flashcards')),
+      );
+    }
+
+    // Show summary initially, or when all cards are tested
+    if (!_isStudying || (_activeCards.isEmpty && _testedCards.isNotEmpty)) {
+      return Scaffold(
+        body: Stack(
+          children: [
+            DailySetSummaryWidget(
+              testedCards: _allActiveFlashcards,
+              onResetDaily: _resetDailySet,
+            ),
+            // Start button in the middle-lower portion of the page
+            if (_testedCards.isEmpty)
+              Positioned(
+                bottom: 100,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: ElevatedButton.icon(
+                    onPressed: _startStudying,
+                    icon: const Icon(Icons.play_arrow),
+                    label: const Text('Start'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 32,
+                        vertical: 16,
+                      ),
+                      backgroundColor: Colors.blue,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
       );
     }
 
@@ -198,9 +322,14 @@ class _FlashcardPageState extends State<FlashcardPage> {
     final double maxOffset = (n - 1) * spacing;
     final double safetyPadding = 8.0;
     final double extraReserve = maxOffset.clamp(0.0, availableHeight * 0.08) + safetyPadding;
-
     return Scaffold(
-      appBar: AppBar(title: const Text('Flashcards')),
+      appBar: AppBar(
+        title: const Text('Flashcards'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: _backToSummary,
+        ),
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: _speakCurrentCard,
         child: const Icon(Icons.volume_up),
@@ -222,7 +351,7 @@ class _FlashcardPageState extends State<FlashcardPage> {
                 right: 0,
                 child: Align(
                   alignment: Alignment.topCenter,
-                  child: _SwipeableCard(
+                  child: SwipeableCard(
                     key: ValueKey(flashcard.id),
                     cardId: flashcard.id,
                     width: cardWidth,
@@ -265,6 +394,7 @@ class _FlashcardPageState extends State<FlashcardPage> {
                       await ShortTermMemoService.saveMemo(memo);
                       setState(() {
                         _activeCards.removeAt(cardIndex);
+                        _testedCards.add(removed);
                         _isBackVisible.remove(removed.id);
                       });
                     },
@@ -285,7 +415,11 @@ class _FlashcardPageState extends State<FlashcardPage> {
                       await ShortTermMemoService.saveMemo(memo);
                       setState(() {
                         _activeCards.removeAt(cardIndex);
-                        _activeCards.add(updatedCard);
+                        _testedCards.add(updatedCard);
+                        // Check if all cards have been tested
+                        if (_activeCards.isEmpty && _testedCards.isNotEmpty) {
+                          _isStudying = false;
+                        }
                       });
                     },
                   ),
@@ -295,197 +429,6 @@ class _FlashcardPageState extends State<FlashcardPage> {
           ),
         ),
       ),
-    );
-  }
-}
-
-// A lightweight swipeable card widget that provides a custom pan/animation
-// for smoother interactions compared to Dismissible. Swiping right will call
-// onRemove; swiping left will call onMoveToEnd after an animated slide-out.
-class _SwipeableCard extends StatefulWidget {
-  const _SwipeableCard({
-    Key? key,
-    required this.cardId,
-    required this.width,
-    required this.height,
-    this.allowSwipe = true,
-    required this.child,
-    required this.onRemove,
-    required this.onMoveToEnd,
-    this.borderColor = Colors.grey,
-    this.borderWidth = 2.0,
-    this.whiteOverlayOpacity = 0.0,
-  }) : super(key: key);
-
-  final String cardId;
-  final double width;
-  final double height;
-  final bool allowSwipe;
-  final Widget child;
-  final VoidCallback onRemove;
-  final VoidCallback onMoveToEnd;
-  final Color borderColor;
-  final double borderWidth;
-  final double whiteOverlayOpacity;
-
-  @override
-  State<_SwipeableCard> createState() => _SwipeableCardState();
-}
-
-class _SwipeableCardState extends State<_SwipeableCard>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _animation;
-  double _offsetX = 0.0;
-  bool _isAnimating = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 300),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _animateTo(double target, VoidCallback? onCompleted) {
-    _animation = Tween(begin: _offsetX, end: target).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-    );
-    _controller.reset();
-    _isAnimating = true;
-    _animation.addListener(() {
-      setState(() {
-        _offsetX = _animation.value;
-      });
-    });
-    _controller.forward().whenComplete(() {
-      _animation.removeListener(() {});
-      _isAnimating = false;
-      if (onCompleted != null) onCompleted();
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final double width = widget.width;
-    final double threshold = width * 0.35;
-
-    // Hint opacity proportional to drag distance
-    final double hintOpacity = ( _offsetX.abs() / (width * 0.5)).clamp(0.0, 1.0);
-
-    // We no longer draw a border; hints still change background opacity.
-
-    return Stack(
-      children: [
-        // Left hint (Move to end) shown when swiping right
-            Positioned.fill(
-              child: Opacity(
-                opacity: _offsetX > 0 ? hintOpacity : 0.0,
-                child: Container(
-                  padding: const EdgeInsets.only(left: 20.0),
-                  alignment: Alignment.centerLeft,
-                  color: Colors.blueGrey.withOpacity(0.12),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      Icon(Icons.loop, color: Colors.greenAccent),
-                      SizedBox(width: 8.0),
-                      Text('Got it', style: TextStyle(color: Colors.greenAccent)),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            // Right hint (Remove) shown when swiping left
-            Positioned.fill(
-              child: Opacity(
-                opacity: _offsetX < 0 ? hintOpacity : 0.0,
-                child: Container(
-                  padding: const EdgeInsets.only(right: 20.0),
-                  alignment: Alignment.centerRight,
-                  color: Colors.redAccent.withOpacity(0.12),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      Text("Study Again", style: TextStyle(color: Colors.redAccent)),
-                      SizedBox(width: 8.0),
-                      Icon(Icons.delete, color: Colors.redAccent),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-        // The draggable card content
-        Transform.translate(
-          offset: Offset(_offsetX, 0),
-          child: GestureDetector(
-            behavior: HitTestBehavior.translucent,
-            onPanUpdate: (details) {
-              if (_isAnimating) return;
-              if (!widget.allowSwipe) return;
-              setState(() {
-                _offsetX += details.delta.dx;
-                // limit to a reasonable range
-                _offsetX = _offsetX.clamp(-width * 1.2, width * 1.2);
-              });
-            },
-            onPanEnd: (details) {
-              if (_isAnimating) return;
-              if (!widget.allowSwipe) return;
-              if (_offsetX.abs() > threshold) {
-                if (_offsetX > 0) {
-                  // Swiped right -> move to end. Animate out to the right.
-                  _animateTo(width * 1.2, () {
-                    widget.onMoveToEnd();
-                  });
-                } else {
-                  // Swiped left -> remove from line. Animate out to the left then callback.
-                  _animateTo(-width * 1.2, () {
-                    widget.onRemove();
-                  });
-                }
-              } else {
-                // Not far enough: animate back
-                _animateTo(0.0, null);
-              }
-            },
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12.0),
-              child: Stack(
-                children: [
-                  Container(
-                    width: widget.width,
-                    height: widget.height,
-                    decoration: BoxDecoration(
-                      color: Colors.transparent,
-                      borderRadius: BorderRadius.circular(12.0),
-                    ),
-                    child: widget.child,
-                  ),
-                  // White overlay gradient for depth effect
-                  if (widget.whiteOverlayOpacity > 0.0)
-                    Container(
-                      width: widget.width,
-                      height: widget.height,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(widget.whiteOverlayOpacity),
-                        borderRadius: BorderRadius.circular(12.0),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }
