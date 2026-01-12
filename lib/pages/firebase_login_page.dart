@@ -153,7 +153,7 @@ class _FirebaseLoginPageState extends State<FirebaseLoginPage> {
                       ],
                     ),
                     child: Image(
-                      image: AssetImage("../lib/assets/images/SchoolLogoTransparente.png"),
+                      image: AssetImage("lib/assets/images/SchoolLogoTransparente.png"),
                       fit: BoxFit.contain,
                     ),
                   ),
