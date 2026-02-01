@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:translator/translator.dart';
 import '/models/flashcard.dart';
 import '/services/firebase_flashcard_service.dart';
 import '/services/flashcard_service.dart';
@@ -6,10 +7,7 @@ import '/services/flashcard_service.dart';
 class AddFlashcardScreen extends StatefulWidget {
   final String deckId;
 
-  const AddFlashcardScreen({
-    Key? key,
-    required this.deckId,
-  }) : super(key: key);
+  const AddFlashcardScreen({Key? key, required this.deckId}) : super(key: key);
 
   @override
   State<AddFlashcardScreen> createState() => _AddFlashcardScreenState();
@@ -20,6 +18,8 @@ class _AddFlashcardScreenState extends State<AddFlashcardScreen> {
   late TextEditingController _backController;
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
+  final _translator = GoogleTranslator();
+  bool _isTranslating = false;
 
   @override
   void initState() {
@@ -33,6 +33,37 @@ class _AddFlashcardScreenState extends State<AddFlashcardScreen> {
     _frontController.dispose();
     _backController.dispose();
     super.dispose();
+  }
+
+  void _translateToPortuguese(String? text) async {
+    if (text == null) return;
+    final trimmedText = text.trim();
+
+    // Only translate if there's text
+    if (trimmedText.isNotEmpty &&
+        !_isTranslating) {
+      setState(() {
+        _isTranslating = true;
+      });
+
+      try {
+        // Translate from English to Portuguese
+        final translation = await _translator.translate(trimmedText, to: 'pt');
+
+        if (mounted) {
+          _backController.text = translation.text;
+        }
+      } catch (e) {
+        // Silently fail translation errors
+        print('Translation error: $e');
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isTranslating = false;
+          });
+        }
+      }
+    }
   }
 
   Future<void> _addFlashcard() async {
@@ -55,7 +86,7 @@ class _AddFlashcardScreenState extends State<AddFlashcardScreen> {
 
       // Save to Firebase
       await FirebaseFlashcardService.saveFlashcard(flashcard);
-      
+
       // Sync to local database
       await FlashcardService.saveFlashcard(flashcard);
 
@@ -67,9 +98,9 @@ class _AddFlashcardScreenState extends State<AddFlashcardScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error adding flashcard: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error adding flashcard: $e')));
       }
     } finally {
       if (mounted) {
@@ -83,10 +114,7 @@ class _AddFlashcardScreenState extends State<AddFlashcardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Add Flashcard'),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: const Text('Add Flashcard'), elevation: 0),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Form(
@@ -108,6 +136,7 @@ class _AddFlashcardScreenState extends State<AddFlashcardScreen> {
                 ),
                 maxLines: 5,
                 minLines: 3,
+                onChanged: _translateToPortuguese,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Front side cannot be empty';
@@ -126,6 +155,18 @@ class _AddFlashcardScreenState extends State<AddFlashcardScreen> {
                     borderRadius: BorderRadius.circular(8.0),
                   ),
                   prefixIcon: const Icon(Icons.description),
+                  suffixIcon: _isTranslating
+                      ? const Padding(
+                          padding: EdgeInsets.all(12.0),
+                          child: SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        )
+                      : null,
+                  helperText: 'Auto-translates from front card to Portuguese',
+                  helperStyle: const TextStyle(fontSize: 12),
                 ),
                 maxLines: 5,
                 minLines: 3,
@@ -157,7 +198,9 @@ class _AddFlashcardScreenState extends State<AddFlashcardScreen> {
               const SizedBox(height: 16.0),
               // Cancel Button
               OutlinedButton(
-                onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
+                onPressed: _isLoading
+                    ? null
+                    : () => Navigator.of(context).pop(),
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16.0),
                 ),
