@@ -2,6 +2,9 @@
 cmake_minimum_required(VERSION 3.14)
 project(app1 LANGUAGES CXX)
 
+# Workaround for Firebase SDK CMake compatibility
+set(CMAKE_POLICY_VERSION_MINIMUM 3.5 CACHE STRING "" FORCE)
+
 # The name of the executable created for the application. Change this to change
 # the on-disk name of your application.
 set(BINARY_NAME "app1")
