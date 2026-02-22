@@ -3,6 +3,19 @@ import 'dart:convert';
 import '../models/daily_flashcard_set.dart';
 import '../models/flashcard.dart';
 
+// Local storage services
+import 'flashcard_service.dart';
+import 'deck_service.dart';
+import 'set_of_cards_service.dart';
+import 'short_term_memo_service.dart';
+
+// Firebase services
+import 'firebase_flashcard_service.dart';
+import 'firebase_deck_service.dart';
+import 'firebase_set_of_cards_service.dart';
+import 'firebase_short_term_memo_service.dart';
+import 'firebase_daily_flashcard_set_service.dart';
+
 class DailyFlashcardSetService {
   static const String _storageKey = 'dailyFlashcardSet';
   static const int _maxCardsPerDay = 20;
@@ -36,10 +49,57 @@ class DailyFlashcardSetService {
       flashcardIds: selectedIds,
     );
 
-    // Save to storage
+    // Save to local storage
     await _saveSet(dailySet);
 
+    // Sync all local data to Firebase
+    await _syncAllDataToFirebase(dailySet);
+
     return dailySet;
+  }
+
+  /// Sync all local storage data to Firebase
+  static Future<void> _syncAllDataToFirebase(DailyFlashcardSet dailySet) async {
+    try {
+      print('Starting sync of all local data to Firebase...');
+
+      // Sync flashcards
+      final flashcards = await FlashcardService.getAllFlashcards();
+      if (flashcards.isNotEmpty) {
+        await FirebaseFlashcardService.saveFlashcards(flashcards);
+        print('Synced ${flashcards.length} flashcards to Firebase');
+      }
+
+      // Sync decks
+      final decks = await DeckService.getAllDecks();
+      if (decks.isNotEmpty) {
+        await FirebaseDeckService.saveDecks(decks);
+        print('Synced ${decks.length} decks to Firebase');
+      }
+
+      // Sync sets of cards
+      final sets = await SetOfCardsService.getAllSets();
+      if (sets.isNotEmpty) {
+        await FirebaseSetOfCardsService.saveSets(sets);
+        print('Synced ${sets.length} sets to Firebase');
+      }
+
+      // Sync short-term memos
+      final memos = await ShortTermMemoService.getAllMemos();
+      if (memos.isNotEmpty) {
+        await FirebaseShortTermMemoService.saveMemos(memos);
+        print('Synced ${memos.length} short-term memos to Firebase');
+      }
+
+      // Sync the daily flashcard set itself
+      await FirebaseDailyFlashcardSetService.saveSet(dailySet);
+      print('Synced daily flashcard set to Firebase');
+
+      print('Successfully synced all data to Firebase');
+    } catch (e) {
+      print('Error syncing data to Firebase: $e');
+      // Don't throw the error - we still want to return the daily set even if sync fails
+    }
   }
 
   /// Select flashcards for the daily set (strategy pattern - can be modified)

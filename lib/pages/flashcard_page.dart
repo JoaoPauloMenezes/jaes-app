@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
+import 'dart:math';
 import '../models/flashcard.dart';
 import '../enums/flashcard_state.dart';
 import '../models/short_term_memo.dart';
@@ -33,14 +34,24 @@ class _FlashcardPageState extends State<FlashcardPage> {
   final Map<String, bool> _isBackVisible = {};
   bool _showMatchingTest = false;
   int _cardsTestedCount = 0;
-  static const int _cardsBeforeTest =
-      1; // Show matching test after every 5 cards
+  late int _cardsBeforeTest; // Random value each day, minimum 7 cards
 
   @override
   void initState() {
     super.initState();
+    _initializeCardsBeforeTest();
     _initTts();
     _loadActiveCards();
+  }
+
+  /// Initialize _cardsBeforeTest with a random value based on today's date
+  /// This ensures the value stays consistent throughout the day but changes daily
+  void _initializeCardsBeforeTest() {
+    final now = DateTime.now();
+    final seed = now.year * 10000 + now.month * 100 + now.day;
+    final random = Random(seed);
+    // Random value between 7 and 12 (inclusive)
+    _cardsBeforeTest = 7 + random.nextInt(6);
   }
 
   Future<void> _initTts() async {
