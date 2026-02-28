@@ -95,6 +95,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "1079834747063-qk8pppd4297csete4b88o9fbef297m5t.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.jaes",
+            "certificate_hash": "d045ede8211b791001a07f02e430960ffd075f50"
+          }
+        },
+        {
           "client_id": "1079834747063-38vih8ljn7jirvpa33ispmfso1ggffdf.apps.googleusercontent.com",
           "client_type": 3
         }

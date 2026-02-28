@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../models/app_user.dart';
 import '../services/user_service.dart';
@@ -139,6 +140,19 @@ class _FirebaseLoginPageState extends State<FirebaseLoginPage> {
         _errorMessage = 'Authentication failed: ${e.message}';
       });
       print('Firebase Auth Error: ${e.code} - ${e.message}');
+    } on PlatformException catch (e) {
+      final isGoogleConfigError =
+          e.code == 'sign_in_failed' &&
+          (e.message?.contains('j:10') ?? false);
+
+      setState(() {
+        _isLoading = false;
+        _errorMessage = isGoogleConfigError
+            ? 'Google Sign-In is not configured correctly for this Android build. '
+                'Please register this app SHA-1/SHA-256 in Firebase and download a new google-services.json.'
+            : 'Google Sign-In failed: ${e.message ?? e.code}';
+      });
+      print('Google Sign-In Platform Error: ${e.code} - ${e.message}');
     } catch (e) {
       setState(() {
         _isLoading = false;
