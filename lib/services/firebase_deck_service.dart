@@ -1,14 +1,23 @@
 import 'package:firebase_database/firebase_database.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/deck.dart';
 
 class FirebaseDeckService {
   static final FirebaseDatabase _database = FirebaseDatabase.instance;
-  static const String _path = 'decks';
 
-  /// Get all decks from Firebase
+  /// Get the current user's decks path
+  static String _getUserPath() {
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null) {
+      throw Exception('User not authenticated');
+    }
+    return 'decks/$userId';
+  }
+
+  /// Get all decks from Firebase for current user
   static Future<List<Deck>> getAllDecks() async {
     try {
-      final ref = _database.ref(_path);
+      final ref = _database.ref(_getUserPath());
       final snapshot = await ref.get();
 
       if (!snapshot.exists) {
@@ -41,7 +50,7 @@ class FirebaseDeckService {
   /// Get a specific deck by id
   static Future<Deck?> getDeckById(String id) async {
     try {
-      final ref = _database.ref('$_path/$id');
+      final ref = _database.ref('${_getUserPath()}/$id');
       final snapshot = await ref.get();
 
       if (!snapshot.exists) {
@@ -58,7 +67,7 @@ class FirebaseDeckService {
   /// Save a new deck to Firebase
   static Future<bool> saveDeck(Deck deck) async {
     try {
-      final ref = _database.ref('$_path/${deck.id}');
+      final ref = _database.ref('${_getUserPath()}/${deck.id}');
       await ref.set(deck.toJson());
       return true;
     } catch (e) {
@@ -70,9 +79,10 @@ class FirebaseDeckService {
   /// Save multiple decks to Firebase
   static Future<bool> saveDecks(List<dynamic> decks) async {
     try {
+      final userPath = _getUserPath();
       final Map<String, dynamic> updates = {};
       for (final deck in decks) {
-        updates['$_path/${deck.id}'] = deck.toJson();
+        updates['$userPath/${deck.id}'] = deck.toJson();
       }
       await _database.ref().update(updates);
       return true;
@@ -85,7 +95,7 @@ class FirebaseDeckService {
   /// Update an existing deck
   static Future<bool> updateDeck(Deck deck) async {
     try {
-      final ref = _database.ref('$_path/${deck.id}');
+      final ref = _database.ref('${_getUserPath()}/${deck.id}');
       await ref.update(deck.toJson());
       return true;
     } catch (e) {
@@ -97,7 +107,7 @@ class FirebaseDeckService {
   /// Delete a deck by id
   static Future<bool> deleteDeck(String id) async {
     try {
-      final ref = _database.ref('$_path/$id');
+      final ref = _database.ref('${_getUserPath()}/$id');
       await ref.remove();
       return true;
     } catch (e) {
@@ -108,7 +118,7 @@ class FirebaseDeckService {
 
   /// Listen to deck changes in real-time
   static Stream<List<Deck>> watchDecks() {
-    return _database.ref(_path).onValue.map((event) {
+    return _database.ref(_getUserPath()).onValue.map((event) {
       if (!event.snapshot.exists) {
         return [];
       }

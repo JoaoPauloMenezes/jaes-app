@@ -1,14 +1,23 @@
 import 'package:firebase_database/firebase_database.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/flashcard.dart';
 
 class FirebaseFlashcardService {
   static final FirebaseDatabase _database = FirebaseDatabase.instance;
-  static const String _path = 'flashcards';
 
-  /// Get all flashcards from Firebase
+  /// Get the current user's flashcards path
+  static String _getUserPath() {
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null) {
+      throw Exception('User not authenticated');
+    }
+    return 'flashcards/$userId';
+  }
+
+  /// Get all flashcards from Firebase for current user
   static Future<List<Flashcard>> getAllFlashcards() async {
     try {
-      final ref = _database.ref(_path);
+      final ref = _database.ref(_getUserPath());
       final snapshot = await ref.get();
 
       if (!snapshot.exists) {
@@ -41,7 +50,7 @@ class FirebaseFlashcardService {
   /// Get a specific flashcard by id
   static Future<Flashcard?> getFlashcardById(String id) async {
     try {
-      final ref = _database.ref('$_path/$id');
+      final ref = _database.ref('${_getUserPath()}/$id');
       final snapshot = await ref.get();
 
       if (!snapshot.exists) {
@@ -58,7 +67,7 @@ class FirebaseFlashcardService {
   /// Save a new flashcard to Firebase
   static Future<bool> saveFlashcard(Flashcard flashcard) async {
     try {
-      final ref = _database.ref('$_path/${flashcard.id}');
+      final ref = _database.ref('${_getUserPath()}/${flashcard.id}');
       await ref.set(flashcard.toJson());
       return true;
     } catch (e) {
@@ -70,9 +79,10 @@ class FirebaseFlashcardService {
   /// Save multiple flashcards to Firebase
   static Future<bool> saveFlashcards(List<Flashcard> flashcards) async {
     try {
+      final userPath = _getUserPath();
       final Map<String, dynamic> updates = {};
       for (final flashcard in flashcards) {
-        updates['$_path/${flashcard.id}'] = flashcard.toJson();
+        updates['$userPath/${flashcard.id}'] = flashcard.toJson();
       }
       await _database.ref().update(updates);
       return true;
@@ -85,7 +95,7 @@ class FirebaseFlashcardService {
   /// Update an existing flashcard
   static Future<bool> updateFlashcard(Flashcard flashcard) async {
     try {
-      final ref = _database.ref('$_path/${flashcard.id}');
+      final ref = _database.ref('${_getUserPath()}/${flashcard.id}');
       await ref.update(flashcard.toJson());
       return true;
     } catch (e) {
@@ -97,7 +107,7 @@ class FirebaseFlashcardService {
   /// Delete a flashcard by id
   static Future<bool> deleteFlashcard(String id) async {
     try {
-      final ref = _database.ref('$_path/$id');
+      final ref = _database.ref('${_getUserPath()}/$id');
       // await ref.remove();
       return true;
     } catch (e) {
@@ -108,7 +118,7 @@ class FirebaseFlashcardService {
 
   /// Listen to flashcard changes in real-time
   static Stream<List<Flashcard>> watchFlashcards() {
-    return _database.ref(_path).onValue.map((event) {
+    return _database.ref(_getUserPath()).onValue.map((event) {
       if (!event.snapshot.exists) {
         return [];
       }

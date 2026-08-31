@@ -6,6 +6,8 @@ import 'add_flashcard_screen.dart';
 import 'deck_flashcards_page.dart';
 import '../services/firebase_deck_service.dart';
 import '../services/sample_data_generator.dart';
+import '../services/user_service.dart';
+import '../services/data_sync_service.dart';
 
 
 class LibraryPage extends StatefulWidget {
@@ -17,11 +19,20 @@ class LibraryPage extends StatefulWidget {
 
 class _LibraryPageState extends State<LibraryPage> {
   List<Deck> _decks = [];
+  bool _isAdmin = false;
 
   @override
   void initState() {
     super.initState();
     _loadDecks();
+    _loadUserRole();
+  }
+
+  Future<void> _loadUserRole() async {
+    final user = await UserService.getCurrentUser();
+    setState(() {
+      _isAdmin = user?.isAdmin ?? false;
+    });
   }
 
   Future<void> _loadDecks() async {
@@ -172,6 +183,30 @@ class _LibraryPageState extends State<LibraryPage> {
     }
   }
 
+  Future<void> _downloadDataFromFirebase() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+
+    final success = await DataSyncService.downloadAllDataFromFirebase();
+    Navigator.pop(context); // Close loading dialog
+
+    if (success) {
+      await _loadDecks();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Data downloaded from Firebase successfully!')),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Error downloading data from Firebase')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -179,10 +214,16 @@ class _LibraryPageState extends State<LibraryPage> {
         title: const Text('Your Flashcard Decks'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.data_usage),
-            tooltip: 'Generate Sample Data',
-            onPressed: _generateSampleData,
+            icon: const Icon(Icons.cloud_download),
+            tooltip: 'Download Data from Firebase',
+            onPressed: _downloadDataFromFirebase,
           ),
+          if (_isAdmin)
+            IconButton(
+              icon: const Icon(Icons.data_usage),
+              tooltip: 'Generate Sample Data (Admin Only)',
+              onPressed: _generateSampleData,
+            ),
         ],
       ),
       body: ListView.builder(

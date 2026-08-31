@@ -1,14 +1,23 @@
 import 'package:firebase_database/firebase_database.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/set_of_cards.dart';
 
 class FirebaseSetOfCardsService {
   static final FirebaseDatabase _database = FirebaseDatabase.instance;
-  static const String _path = 'sets';
 
-  /// Get all sets from Firebase
+  /// Get the current user's sets path
+  static String _getUserPath() {
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null) {
+      throw Exception('User not authenticated');
+    }
+    return 'sets/$userId';
+  }
+
+  /// Get all sets from Firebase for current user
   static Future<List<SetOfCards>> getAllSets() async {
     try {
-      final ref = _database.ref(_path);
+      final ref = _database.ref(_getUserPath());
       final snapshot = await ref.get();
 
       if (!snapshot.exists) {
@@ -41,7 +50,7 @@ class FirebaseSetOfCardsService {
   /// Get a specific set by id
   static Future<SetOfCards?> getSetById(String id) async {
     try {
-      final ref = _database.ref('$_path/$id');
+      final ref = _database.ref('${_getUserPath()}/$id');
       final snapshot = await ref.get();
 
       if (!snapshot.exists) {
@@ -58,7 +67,7 @@ class FirebaseSetOfCardsService {
   /// Save a new set to Firebase
   static Future<bool> saveSet(SetOfCards set) async {
     try {
-      final ref = _database.ref('$_path/${set.id}');
+      final ref = _database.ref('${_getUserPath()}/${set.id}');
       await ref.set(set.toJson());
       return true;
     } catch (e) {
@@ -70,9 +79,10 @@ class FirebaseSetOfCardsService {
   /// Save multiple sets to Firebase
   static Future<bool> saveSets(List<dynamic> sets) async {
     try {
+      final userPath = _getUserPath();
       final Map<String, dynamic> updates = {};
       for (final set in sets) {
-        updates['$_path/${set.id}'] = set.toJson();
+        updates['$userPath/${set.id}'] = set.toJson();
       }
       await _database.ref().update(updates);
       return true;
@@ -85,7 +95,7 @@ class FirebaseSetOfCardsService {
   /// Update an existing set
   static Future<bool> updateSet(SetOfCards set) async {
     try {
-      final ref = _database.ref('$_path/${set.id}');
+      final ref = _database.ref('${_getUserPath()}/${set.id}');
       await ref.update(set.toJson());
       return true;
     } catch (e) {
@@ -97,7 +107,7 @@ class FirebaseSetOfCardsService {
   /// Delete a set by id
   static Future<bool> deleteSet(String id) async {
     try {
-      final ref = _database.ref('$_path/$id');
+      final ref = _database.ref('${_getUserPath()}/$id');
       await ref.remove();
       return true;
     } catch (e) {
@@ -108,7 +118,7 @@ class FirebaseSetOfCardsService {
 
   /// Listen to set changes in real-time
   static Stream<List<SetOfCards>> watchSets() {
-    return _database.ref(_path).onValue.map((event) {
+    return _database.ref(_getUserPath()).onValue.map((event) {
       if (!event.snapshot.exists) {
         return [];
       }

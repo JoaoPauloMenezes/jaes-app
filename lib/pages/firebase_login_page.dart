@@ -1,10 +1,13 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:io' show Platform;
 import 'package:google_sign_in/google_sign_in.dart';
 import '../models/app_user.dart';
 import '../services/user_service.dart';
+import '../services/data_sync_service.dart';
+import '../services/firebase_user_service.dart';
 import 'home_page.dart';
 
 class FirebaseLoginPage extends StatefulWidget {
@@ -51,21 +54,37 @@ class _FirebaseLoginPageState extends State<FirebaseLoginPage> {
     final firebaseUser = _firebaseAuth.currentUser;
     final localUser = await UserService.getCurrentUser();
     
-    // If user exists in local DB, navigate to home
-    if (localUser != null) {
+    // If user exists in local DB, perform sync and navigate to home
+    if (localUser != null && firebaseUser != null) {
+      // Perform background sync
+      DataSyncService.performFullSync().then((success) {
+        if (success) {
+          print('Background sync completed successfully');
+        } else {
+          print('Background sync failed');
+        }
+      });
       _navigateToHome();
       return;
     }
     
-    // If Firebase user exists but not in local DB, save to local DB
+    // If Firebase user exists but not in local DB, save to local DB and sync
     if (firebaseUser != null) {
+      // Get user role from Firebase
+      final role = await FirebaseUserService.getCurrentUserRole();
+      
       final user = AppUser.fromFirebaseUser(
         firebaseUser.uid,
         firebaseUser.displayName,
         firebaseUser.email,
         firebaseUser.photoURL,
+        role: role,
       );
       await UserService.saveUser(user);
+      
+      // Perform sync
+      await DataSyncService.performFullSync();
+      
       _navigateToHome();
     }
   }
@@ -112,14 +131,34 @@ class _FirebaseLoginPageState extends State<FirebaseLoginPage> {
           await _firebaseAuth.signInWithCredential(credential);
 
       if (userCredential.user != null) {
-        // Save user to local database
+        // Get user role from Firebase
+        final role = await FirebaseUserService.getCurrentUserRole();
+        
+        // Create user object
         final user = AppUser.fromFirebaseUser(
           userCredential.user!.uid,
           userCredential.user!.displayName,
           userCredential.user!.email,
           userCredential.user!.photoURL,
+          role: role,
         );
+        
+        // Save user to local database first
         await UserService.saveUser(user);
+        
+        // Save user to Firebase database as well
+        await FirebaseUserService.saveUser(user);
+        
+        // Perform full data sync: upload local data, then download user data from Firebase
+        print('Starting data synchronization...');
+        final syncSuccess = await DataSyncService.performFullSync();
+        
+        if (syncSuccess) {
+          print('Data synchronization completed successfully');
+        } else {
+          print('Warning: Data synchronization failed, but continuing to home page');
+        }
+        
         _navigateToHome();
       }
     } on FirebaseAuthException catch (e) {
@@ -128,6 +167,19 @@ class _FirebaseLoginPageState extends State<FirebaseLoginPage> {
         _errorMessage = 'Authentication failed: ${e.message}';
       });
       print('Firebase Auth Error: ${e.code} - ${e.message}');
+    } on PlatformException catch (e) {
+      final isGoogleConfigError =
+          e.code == 'sign_in_failed' &&
+          (e.message?.contains('j:10') ?? false);
+
+      setState(() {
+        _isLoading = false;
+        _errorMessage = isGoogleConfigError
+            ? 'Google Sign-In is not configured correctly for this Android build. '
+                'Please register this app SHA-1/SHA-256 in Firebase and download a new google-services.json.'
+            : 'Google Sign-In failed: ${e.message ?? e.code}';
+      });
+      print('Google Sign-In Platform Error: ${e.code} - ${e.message}');
     } catch (e) {
       setState(() {
         _isLoading = false;
@@ -297,7 +349,7 @@ class _FirebaseLoginPageState extends State<FirebaseLoginPage> {
                       ],
                     ),
                     child: Image(
-                      image: AssetImage("../lib/assets/images/SchoolLogoTransparente.png"),
+                      image: AssetImage("lib/assets/images/SchoolLogoTransparente.png"),
                       fit: BoxFit.contain,
                     ),
                   ),
