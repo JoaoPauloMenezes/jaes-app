@@ -64,6 +64,8 @@ jobs:
           <dict>
             <key>method</key>
             <string>app-store</string>
+            <key>signingStyle</key>
+            <string>automatic</string>
             <key>teamID</key>
             <string>${APPLE_TEAM_ID}</string>
             <key>uploadBitcode</key>
@@ -77,6 +79,12 @@ jobs:
       - name: Build IPA
         run: |
           flutter build ipa --export-options-plist=ExportOptions.plist
+          mkdir -p build/ios/ipa
+          xcodebuild -exportArchive \
+            -archivePath build/ios/archive/Runner.xcarchive \
+            -exportPath build/ios/ipa \
+            -exportOptionsPlist ExportOptions.plist
+          find build/ios -maxdepth 3 \( -name '*.xcarchive' -o -name '*.ipa' \) -print
 
       - name: Prepare App Store Connect API key JSON
         env:
