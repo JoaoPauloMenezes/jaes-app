@@ -76,7 +76,7 @@ jobs:
 
       - name: Build IPA
         run: |
-          flutter build ipa --export-options-plist=ExportOptions.plist --no-codesign
+          flutter build ipa --export-options-plist=ExportOptions.plist
 
       - name: Prepare App Store Connect API key JSON
         env:
