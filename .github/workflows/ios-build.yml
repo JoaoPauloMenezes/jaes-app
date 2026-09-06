@@ -44,6 +44,7 @@ jobs:
       - name: Decode and install provisioning profile
         env:
           PROVISIONING_PROFILE: ${{ secrets.PROVISIONING_PROFILE }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           python - <<'PY'
           import os, base64
@@ -51,7 +52,25 @@ jobs:
               f.write(base64.b64decode(os.environ["PROVISIONING_PROFILE"]))
           PY
           mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
-          cp profile.mobileprovision "$HOME/Library/MobileDevice/Provisioning Profiles/"
+          security cms -D -i profile.mobileprovision > profile.plist
+          PROFILE_UUID=$(/usr/libexec/PlistBuddy -c 'Print :UUID' profile.plist)
+          PROFILE_NAME=$(/usr/libexec/PlistBuddy -c 'Print :Name' profile.plist)
+          APPLICATION_IDENTIFIER=$(/usr/libexec/PlistBuddy -c 'Print :Entitlements:application-identifier' profile.plist)
+          EXPECTED_APPLICATION_IDENTIFIER="${APPLE_TEAM_ID}.com.jaes.app"
+          if [ "$APPLICATION_IDENTIFIER" != "$EXPECTED_APPLICATION_IDENTIFIER" ]; then
+            echo "Provisioning profile application identifier is '$APPLICATION_IDENTIFIER', expected '$EXPECTED_APPLICATION_IDENTIFIER'"
+            exit 1
+          fi
+          GET_TASK_ALLOW=$(/usr/libexec/PlistBuddy -c 'Print :Entitlements:get-task-allow' profile.plist 2>/dev/null || true)
+          if [ "$GET_TASK_ALLOW" = "true" ] || /usr/libexec/PlistBuddy -c 'Print :ProvisionedDevices' profile.plist >/dev/null 2>&1; then
+            echo "The provisioning profile is a development profile; a distribution profile is required for TestFlight"
+            exit 1
+          fi
+          cp profile.mobileprovision "$HOME/Library/MobileDevice/Provisioning Profiles/$PROFILE_UUID.mobileprovision"
+          {
+            echo "PROFILE_UUID=$PROFILE_UUID"
+            echo "PROFILE_NAME=$PROFILE_NAME"
+          } >> "$GITHUB_ENV"
 
       - name: Create ExportOptions.plist
         env:
@@ -65,9 +84,14 @@ jobs:
             <key>method</key>
             <string>app-store</string>
             <key>signingStyle</key>
-            <string>automatic</string>
+            <string>manual</string>
             <key>teamID</key>
             <string>${APPLE_TEAM_ID}</string>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>com.jaes.app</key>
+              <string>${PROFILE_NAME}</string>
+            </dict>
             <key>uploadBitcode</key>
             <false/>
             <key>compileBitcode</key>
@@ -77,9 +101,22 @@ jobs:
           EOF
 
       - name: Build IPA
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
-          flutter build ipa --export-options-plist=ExportOptions.plist
+          flutter build ios --release --no-codesign
           mkdir -p build/ios/ipa
+          xcodebuild \
+            -workspace ios/Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -sdk iphoneos \
+            -archivePath build/ios/archive/Runner.xcarchive \
+            archive \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_UUID"
           xcodebuild -exportArchive \
             -archivePath build/ios/archive/Runner.xcarchive \
             -exportPath build/ios/ipa \
