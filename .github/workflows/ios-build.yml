@@ -223,10 +223,17 @@ jobs:
             env_file.write("\nKEY\n")
           PY
 
+      - name: Locate IPA
+        run: |
+          set -euo pipefail
+          IPA_PATH=$(find build/ios/ipa -maxdepth 1 -type f -name '*.ipa' -print -quit)
+          : "${IPA_PATH:?No IPA was produced by xcodebuild}"
+          echo "IPA_PATH=$IPA_PATH" >> "$GITHUB_ENV"
+
       - name: Upload to TestFlight
-        uses: apple-actions/upload-testflight-build@v2
+        uses: apple-actions/upload-testflight-build@v5
         with:
-          app-path: build/ios/ipa/*.ipa
+          app-path: ${{ env.IPA_PATH }}
           issuer-id: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
           api-key-id: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
           api-private-key: ${{ env.APP_STORE_CONNECT_PRIVATE_KEY_PEM }}
