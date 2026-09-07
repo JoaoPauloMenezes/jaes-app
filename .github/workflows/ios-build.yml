@@ -237,6 +237,7 @@ jobs:
           issuer-id: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
           api-key-id: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
           api-private-key: ${{ env.APP_STORE_CONNECT_PRIVATE_KEY_PEM }}
+          wait-for-processing: 'false'
 
       - name: Upload artifact (.ipa)
         if: always()
