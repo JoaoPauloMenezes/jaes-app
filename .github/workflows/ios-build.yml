@@ -197,53 +197,39 @@ jobs:
             -exportOptionsPlist ExportOptions.plist
           find build/ios -maxdepth 3 \( -name '*.xcarchive' -o -name '*.ipa' \) -print
 
-      - name: Prepare App Store Connect API key JSON
+      - name: Normalize App Store Connect API key
         env:
-          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
-          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
           APP_STORE_CONNECT_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
         run: |
-          python - <<'PY'
-          import os, base64, json
-          key_value = os.environ.get("APP_STORE_CONNECT_PRIVATE_KEY", "").strip()
-          key_id = os.environ.get("APP_STORE_CONNECT_KEY_ID", "").strip()
-          issuer_id = os.environ.get("APP_STORE_CONNECT_ISSUER_ID", "").strip()
-          if not key_value or key_value == "null":
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64, os
+
+          value = os.environ.get("APP_STORE_CONNECT_PRIVATE_KEY", "").strip()
+          if not value or value == "null":
             raise SystemExit("Missing APP_STORE_CONNECT_PRIVATE_KEY secret")
-          if not key_id or not issuer_id:
-            raise SystemExit("APP_STORE_CONNECT_KEY_ID and APP_STORE_CONNECT_ISSUER_ID are required")
-          if "BEGIN PRIVATE KEY" in key_value:
-            key = key_value.replace("\\n", "\n")
+          if "BEGIN PRIVATE KEY" in value:
+            pem = value.replace("\\n", "\n")
           else:
             try:
-              key = base64.b64decode(key_value, validate=True).decode("utf-8")
+              pem = base64.b64decode(value, validate=True).decode("utf-8")
             except Exception as error:
-              raise SystemExit(f"APP_STORE_CONNECT_PRIVATE_KEY must be PEM or Base64 PEM: {error}")
-          if "BEGIN PRIVATE KEY" not in key or "END PRIVATE KEY" not in key:
-            raise SystemExit("APP_STORE_CONNECT_PRIVATE_KEY is not a valid PEM private key")
-          obj = {
-            "key_id": key_id,
-            "issuer_id": issuer_id,
-              "key": key,
-          }
-          with open("api_key.json", "w") as f:
-              json.dump(obj, f)
+              raise SystemExit(f"API key must be PEM or Base64 PEM: {error}")
+          if "BEGIN PRIVATE KEY" not in pem or "END PRIVATE KEY" not in pem:
+            raise SystemExit("APP_STORE_CONNECT_PRIVATE_KEY is not a valid PEM key")
+          with open(os.environ["GITHUB_ENV"], "a") as env_file:
+            env_file.write("APP_STORE_CONNECT_PRIVATE_KEY_PEM<<KEY\n")
+            env_file.write(pem)
+            env_file.write("\nKEY\n")
           PY
 
-      - name: Install fastlane
-        run: gem install fastlane -v 2.226.0 --no-document
-
-      - name: Upload to TestFlight (fastlane)
-        run: |
-          set -euo pipefail
-          IPA_PATH=$(find build/ios/ipa -maxdepth 1 -type f -name '*.ipa' -print -quit)
-          : "${IPA_PATH:?No IPA was produced by xcodebuild}"
-          echo "Uploading ${IPA_PATH} with fastlane"
-          fastlane pilot upload \
-            -i "$IPA_PATH" \
-            --api_key_path api_key.json \
-            --skip_waiting_for_build_processing \
-            --verbose 2>&1 | tee fastlane-upload.log
+      - name: Upload to TestFlight
+        uses: apple-actions/upload-testflight-build@v2
+        with:
+          app-path: build/ios/ipa/*.ipa
+          issuer-id: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          api-key-id: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          api-private-key: ${{ env.APP_STORE_CONNECT_PRIVATE_KEY_PEM }}
 
       - name: Upload artifact (.ipa)
         if: always()
@@ -252,4 +238,3 @@ jobs:
           name: ios-ipa
           path: |
             build/ios/ipa/*.ipa
-            fastlane-upload.log
