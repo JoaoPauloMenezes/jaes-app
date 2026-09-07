@@ -17,7 +17,7 @@ jobs:
   build:
     name: Build iOS and Upload to TestFlight
     runs-on: macos-latest
-    timeout-minutes: 55
+    timeout-minutes: 90
 
     steps:
       - name: Checkout
@@ -150,7 +150,7 @@ jobs:
           echo "Runner signing configuration applied"
 
       - name: Archive iOS app
-        timeout-minutes: 40
+        timeout-minutes: 70
         run: |
           set -euxo pipefail
           echo "Starting Xcode archive"
@@ -161,8 +161,20 @@ jobs:
             -configuration Release \
             -destination 'generic/platform=iOS' \
             -archivePath build/ios/archive/Runner.xcarchive \
+            -derivedDataPath build/ios/derived \
+            -resultBundlePath build/ios/archive/Runner.xcresult \
             -showBuildTimingSummary \
             archive
+
+      - name: Upload archive diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-archive-diagnostics
+          path: |
+            build/ios/archive/Runner.xcresult
+            build/ios/derived/Logs
+          if-no-files-found: ignore
 
       - name: Export IPA
         timeout-minutes: 5
