@@ -230,34 +230,20 @@ jobs:
               json.dump(obj, f)
           PY
 
-      - name: Upload to TestFlight (iTMSTransporter)
-        env:
-          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
-          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+      - name: Install fastlane
+        run: gem install fastlane -v 2.226.0 --no-document
+
+      - name: Upload to TestFlight (fastlane)
         run: |
           set -euo pipefail
-          : "${APP_STORE_CONNECT_KEY_ID:?APP_STORE_CONNECT_KEY_ID is required}"
-          : "${APP_STORE_CONNECT_ISSUER_ID:?APP_STORE_CONNECT_ISSUER_ID is required}"
           IPA_PATH=$(find build/ios/ipa -maxdepth 1 -type f -name '*.ipa' -print -quit)
           : "${IPA_PATH:?No IPA was produced by xcodebuild}"
-          mkdir -p "$HOME/.appstoreconnect/private_keys"
-          python - <<'PY'
-          import json, os
-          with open("api_key.json") as file:
-              api_key = json.load(file)
-          key_path = os.path.expanduser(
-              f"~/.appstoreconnect/private_keys/AuthKey_{api_key['key_id']}.p8"
-          )
-          with open(key_path, "w") as file:
-              file.write(api_key["key"])
-          os.chmod(key_path, 0o600)
-          PY
-          echo "Uploading ${IPA_PATH} with iTMSTransporter"
-          xcrun iTMSTransporter \
-            -m upload \
-            -assetFile "$IPA_PATH" \
-            -apiKey "$APP_STORE_CONNECT_KEY_ID" \
-            -apiIssuer "$APP_STORE_CONNECT_ISSUER_ID" 2>&1 | tee fastlane-upload.log
+          echo "Uploading ${IPA_PATH} with fastlane"
+          fastlane pilot upload \
+            -i "$IPA_PATH" \
+            --api_key_path api_key.json \
+            --skip_waiting_for_build_processing \
+            --verbose 2>&1 | tee fastlane-upload.log
 
       - name: Upload artifact (.ipa)
         if: always()
