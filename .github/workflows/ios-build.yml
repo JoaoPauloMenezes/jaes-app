@@ -235,13 +235,32 @@ jobs:
           gem install fastlane -v 2.226.0
 
       - name: Upload to TestFlight (fastlane pilot)
+        env:
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
         run: |
+          set -o pipefail
           ls -la build/ios/ipa || true
-          fastlane pilot upload -i build/ios/ipa/*.ipa --api_key_path api_key.json --skip_waiting_for_build_processing --verbose
+          IPA_PATH=(build/ios/ipa/*.ipa)
+          if [ ! -f "${IPA_PATH[0]}" ]; then
+            echo "No IPA was produced by xcodebuild"
+            exit 1
+          fi
+          unzip -p "${IPA_PATH[0]}" Payload/*.app/Info.plist > /tmp/Info.plist
+          BUNDLE_ID=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' /tmp/Info.plist)
+          BUILD_NUMBER=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' /tmp/Info.plist)
+          echo "Uploading bundle ${BUNDLE_ID} build ${BUILD_NUMBER}"
+          if ! fastlane pilot upload -i "${IPA_PATH[0]}" --api_key_path api_key.json --skip_waiting_for_build_processing --verbose 2>&1 | tee fastlane-upload.log; then
+            echo "TestFlight upload failed. Check API key permissions, issuer/key ID, bundle ID, or whether build ${BUILD_NUMBER} already exists."
+            exit 1
+          fi
 
       - name: Upload artifact (.ipa)
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ios-ipa
-          path: build/ios/ipa/*.ipa
+          path: |
+            build/ios/ipa/*.ipa
+            fastlane-upload.log
