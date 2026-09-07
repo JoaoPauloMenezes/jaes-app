@@ -17,7 +17,7 @@ jobs:
   build:
     name: Build iOS and Upload to TestFlight
     runs-on: macos-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
 
     steps:
       - name: Checkout
@@ -110,11 +110,19 @@ jobs:
           plutil -lint ExportOptions.plist
           echo "Created ExportOptions.plist for profile: ${PROFILE_NAME}"
 
-      - name: Build IPA
+      - name: Prepare Flutter iOS build
+        timeout-minutes: 10
+        run: |
+          set -euxo pipefail
+          echo "Starting Flutter iOS preparation"
+          flutter build ios --release --no-codesign
+
+      - name: Configure Runner manual signing
+        timeout-minutes: 1
         env:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
-          flutter build ios --release --no-codesign
+          set -euo pipefail
           python3 - "$PROFILE_UUID" "$APPLE_TEAM_ID" <<'PY'
           import re
           import sys
@@ -139,6 +147,13 @@ jobs:
           )
           project_path.write_text(project[:settings_start] + settings + project[settings_end:])
           PY
+          echo "Runner signing configuration applied"
+
+      - name: Archive iOS app
+        timeout-minutes: 15
+        run: |
+          set -euxo pipefail
+          echo "Starting Xcode archive"
           mkdir -p build/ios/ipa
           xcodebuild \
             -workspace ios/Runner.xcworkspace \
@@ -147,6 +162,12 @@ jobs:
             -sdk iphoneos \
             -archivePath build/ios/archive/Runner.xcarchive \
             archive
+
+      - name: Export IPA
+        timeout-minutes: 5
+        run: |
+          set -euxo pipefail
+          echo "Starting IPA export"
           xcodebuild -exportArchive \
             -archivePath build/ios/archive/Runner.xcarchive \
             -exportPath build/ios/ipa \
