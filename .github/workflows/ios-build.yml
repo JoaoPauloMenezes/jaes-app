@@ -17,7 +17,7 @@ jobs:
   build:
     name: Build iOS and Upload to TestFlight
     runs-on: macos-latest
-    timeout-minutes: 35
+    timeout-minutes: 50
 
     steps:
       - name: Checkout
@@ -150,7 +150,7 @@ jobs:
           echo "Runner signing configuration applied"
 
       - name: Archive iOS app
-        timeout-minutes: 15
+        timeout-minutes: 30
         run: |
           set -euxo pipefail
           echo "Starting Xcode archive"
