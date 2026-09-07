@@ -125,7 +125,7 @@ jobs:
         run: |
           set -euxo pipefail
           echo "Starting Flutter iOS preparation"
-          flutter build ios --release --no-codesign
+          flutter build ios --release --no-codesign --build-number "$GITHUB_RUN_NUMBER"
 
       - name: Configure Runner manual signing
         timeout-minutes: 1
@@ -205,13 +205,25 @@ jobs:
         run: |
           python - <<'PY'
           import os, base64, json
-          key_b64 = os.environ.get("APP_STORE_CONNECT_PRIVATE_KEY", "")
-          if key_b64.strip() == "" or key_b64.strip() == "null":
-              raise SystemExit("Missing APP_STORE_CONNECT_PRIVATE_KEY secret")
-          key = base64.b64decode(key_b64).decode("utf-8")
+          key_value = os.environ.get("APP_STORE_CONNECT_PRIVATE_KEY", "").strip()
+          key_id = os.environ.get("APP_STORE_CONNECT_KEY_ID", "").strip()
+          issuer_id = os.environ.get("APP_STORE_CONNECT_ISSUER_ID", "").strip()
+          if not key_value or key_value == "null":
+            raise SystemExit("Missing APP_STORE_CONNECT_PRIVATE_KEY secret")
+          if not key_id or not issuer_id:
+            raise SystemExit("APP_STORE_CONNECT_KEY_ID and APP_STORE_CONNECT_ISSUER_ID are required")
+          if "BEGIN PRIVATE KEY" in key_value:
+            key = key_value.replace("\\n", "\n")
+          else:
+            try:
+              key = base64.b64decode(key_value, validate=True).decode("utf-8")
+            except Exception as error:
+              raise SystemExit(f"APP_STORE_CONNECT_PRIVATE_KEY must be PEM or Base64 PEM: {error}")
+          if "BEGIN PRIVATE KEY" not in key or "END PRIVATE KEY" not in key:
+            raise SystemExit("APP_STORE_CONNECT_PRIVATE_KEY is not a valid PEM private key")
           obj = {
-              "key_id": os.environ["APP_STORE_CONNECT_KEY_ID"],
-              "issuer_id": os.environ["APP_STORE_CONNECT_ISSUER_ID"],
+            "key_id": key_id,
+            "issuer_id": issuer_id,
               "key": key,
           }
           with open("api_key.json", "w") as f:
@@ -225,9 +237,10 @@ jobs:
       - name: Upload to TestFlight (fastlane pilot)
         run: |
           ls -la build/ios/ipa || true
-          fastlane pilot upload -i build/ios/ipa/*.ipa --api_key_path api_key.json
+          fastlane pilot upload -i build/ios/ipa/*.ipa --api_key_path api_key.json --skip_waiting_for_build_processing --verbose
 
       - name: Upload artifact (.ipa)
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ios-ipa
