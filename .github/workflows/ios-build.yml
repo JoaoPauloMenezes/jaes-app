@@ -252,8 +252,27 @@ jobs:
           BUILD_NUMBER=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' /tmp/Info.plist)
           echo "Uploading bundle ${BUNDLE_ID} build ${BUILD_NUMBER}"
           if ! fastlane pilot upload -i "${IPA_PATH[0]}" --api_key_path api_key.json --skip_waiting_for_build_processing --verbose 2>&1 | tee fastlane-upload.log; then
-            echo "TestFlight upload failed. Check API key permissions, issuer/key ID, bundle ID, or whether build ${BUILD_NUMBER} already exists."
-            exit 1
+            echo "Fastlane upload failed; retrying with Apple's iTMSTransporter"
+            mkdir -p "$HOME/.appstoreconnect/private_keys"
+            python - <<'PY'
+            import json, os
+            with open("api_key.json") as file:
+                api_key = json.load(file)
+            key_path = os.path.expanduser(
+                f"~/.appstoreconnect/private_keys/AuthKey_{api_key['key_id']}.p8"
+            )
+            with open(key_path, "w") as file:
+                file.write(api_key["key"])
+            os.chmod(key_path, 0o600)
+            PY
+            if ! xcrun iTMSTransporter \
+              -m upload \
+              -assetFile "${IPA_PATH[0]}" \
+              -apiKey "$APP_STORE_CONNECT_KEY_ID" \
+              -apiIssuer "$APP_STORE_CONNECT_ISSUER_ID" 2>&1 | tee -a fastlane-upload.log; then
+              echo "TestFlight upload failed. Check API key permissions, issuer/key ID, bundle ID, or whether build ${BUILD_NUMBER} already exists."
+              exit 1
+            fi
           fi
 
       - name: Upload artifact (.ipa)
