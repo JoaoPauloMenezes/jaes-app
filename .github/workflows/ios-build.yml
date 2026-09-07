@@ -9,6 +9,10 @@ permissions:
   contents: read
   id-token: write
 
+concurrency:
+  group: ios-build-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     name: Build iOS and Upload to TestFlight
@@ -76,30 +80,35 @@ jobs:
       - name: Create ExportOptions.plist
         env:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        timeout-minutes: 1
         run: |
-          cat > ExportOptions.plist <<EOF
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>method</key>
-            <string>app-store</string>
-            <key>signingStyle</key>
-            <string>manual</string>
-            <key>teamID</key>
-            <string>${APPLE_TEAM_ID}</string>
-            <key>provisioningProfiles</key>
-            <dict>
-              <key>com.jaes.app</key>
-              <string>${PROFILE_NAME}</string>
-            </dict>
-            <key>uploadBitcode</key>
-            <false/>
-            <key>compileBitcode</key>
-            <false/>
-          </dict>
-          </plist>
-          EOF
+          set -euo pipefail
+          : "${APPLE_TEAM_ID:?APPLE_TEAM_ID is required}"
+          : "${PROFILE_NAME:?PROFILE_NAME is required}"
+          printf '%s\n' \
+            '<?xml version="1.0" encoding="UTF-8"?>' \
+            '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' \
+            '<plist version="1.0">' \
+            '<dict>' \
+            '  <key>method</key>' \
+            '  <string>app-store</string>' \
+            '  <key>signingStyle</key>' \
+            '  <string>manual</string>' \
+            '  <key>teamID</key>' \
+            "  <string>${APPLE_TEAM_ID}</string>" \
+            '  <key>provisioningProfiles</key>' \
+            '  <dict>' \
+            '    <key>com.jaes.app</key>' \
+            "    <string>${PROFILE_NAME}</string>" \
+            '  </dict>' \
+            '  <key>uploadBitcode</key>' \
+            '  <false/>' \
+            '  <key>compileBitcode</key>' \
+            '  <false/>' \
+            '</dict>' \
+            '</plist>' > ExportOptions.plist
+          plutil -lint ExportOptions.plist
+          echo "Created ExportOptions.plist for profile: ${PROFILE_NAME}"
 
       - name: Build IPA
         env:
