@@ -4,6 +4,7 @@
 *.pyc
 *.swp
 *.key
+*.jks
 .DS_Store
 .atom/
 .build/
