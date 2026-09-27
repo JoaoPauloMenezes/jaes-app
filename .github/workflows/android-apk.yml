@@ -66,8 +66,13 @@ jobs:
           storeFile=$RUNNER_TEMP/jaes-release.keystore
           EOF
             echo "Release signing configured"
+            keytool -list -v \
+              -keystore "$RUNNER_TEMP/jaes-release.keystore" \
+              -storepass "$ANDROID_KEYSTORE_PASSWORD" \
+              -alias "$ANDROID_KEY_ALIAS" | grep -E 'Owner:|SHA1:|SHA256:'
           else
-            echo "Release signing secrets are not configured; the Gradle build will use its debug signing fallback"
+            echo "Release signing secrets are not configured; Google Sign-In release builds require a configured release keystore"
+            exit 1
           fi
 
       - name: Build APK
