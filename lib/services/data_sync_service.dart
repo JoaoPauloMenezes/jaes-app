@@ -160,7 +160,8 @@ class DataSyncService {
       print('Clearing all local data...');
 
       await FlashcardService.clearAllFlashcards();
-      // Note: DeckService and SetOfCardsService don't have clear methods yet
+      await DeckService.clearAllDecks();
+      await SetOfCardsService.clearAllSets();
       await ShortTermMemoService.deleteAllMemos();
       await DailyFlashcardSetService.clearStoredSet();
 

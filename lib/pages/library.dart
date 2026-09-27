@@ -159,6 +159,54 @@ class _LibraryPageState extends State<LibraryPage> {
     }
   }
 
+  Future<void> _editDeckTitle(int index) async {
+    final deck = _decks[index];
+    final titleController = TextEditingController(text: deck.title);
+    final newTitle = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Deck Title'),
+        content: TextField(
+          controller: titleController,
+          autofocus: true,
+          textInputAction: TextInputAction.done,
+          decoration: const InputDecoration(labelText: 'Title'),
+          onSubmitted: (value) => Navigator.pop(context, value.trim()),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, titleController.text.trim()),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    titleController.dispose();
+
+    if (newTitle == null || newTitle.isEmpty || newTitle == deck.title) {
+      return;
+    }
+
+    final updatedDeck = Deck(
+      id: deck.id,
+      title: newTitle,
+      description: deck.description,
+      isActive: deck.isActive,
+      userId: deck.userId,
+    );
+    final prefs = await SharedPreferences.getInstance();
+    setState(() => _decks[index] = updatedDeck);
+    await prefs.setStringList(
+      'decks',
+      _decks.map((item) => json.encode(item.toJson())).toList(),
+    );
+    await FirebaseDeckService.updateDeck(updatedDeck);
+  }
+
   Future<void> _generateSampleData() async {
     showDialog(
       context: context,
@@ -234,25 +282,27 @@ class _LibraryPageState extends State<LibraryPage> {
             child: ListTile(
               title: Text(deck.title),
               subtitle: Text(deck.description),
+              onTap: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => DeckFlashcardsPage(
+                      deckId: deck.id,
+                      deckTitle: deck.title,
+                    ),
+                  ),
+                );
+              },
               leading: Icon(
                 deck.isActive ? Icons.check_circle : Icons.cancel,
                 color: deck.isActive ? Colors.green : Colors.grey,
               ),
               trailing: PopupMenuButton<String>(
                 onSelected: (value) async {
-                  if (value == 'toggle') {
+                  if (value == 'edit_title') {
+                    await _editDeckTitle(index);
+                  } else if (value == 'toggle') {
                     _toggleActive(index);
-                  } else if (value == 'view_cards') {
-                    // Open page that lists all flashcards from this deck
-                    await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => DeckFlashcardsPage(
-                          deckId: deck.id,
-                          deckTitle: deck.title,
-                        ),
-                      ),
-                    );
                   } else if (value == 'add_card') {
                     // Open the AddFlashcardScreen and pass the deck id
                     final result = await Navigator.push(
@@ -286,6 +336,16 @@ class _LibraryPageState extends State<LibraryPage> {
                   }
                 },
                 itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: 'edit_title',
+                    child: Row(
+                      children: [
+                        Icon(Icons.edit, color: Colors.blue),
+                        SizedBox(width: 8),
+                        Text('Edit title'),
+                      ],
+                    ),
+                  ),
                   PopupMenuItem(
                     value: 'add_card',
                     child: Row(
@@ -306,16 +366,6 @@ class _LibraryPageState extends State<LibraryPage> {
                         ),
                         const SizedBox(width: 8),
                         Text(deck.isActive ? 'Mark as inactive' : 'Mark as active'),
-                      ],
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: 'view_cards',
-                    child: Row(
-                      children: const [
-                        Icon(Icons.list, color: Colors.blue),
-                        SizedBox(width: 8),
-                        Text('View Flashcards'),
                       ],
                     ),
                   ),

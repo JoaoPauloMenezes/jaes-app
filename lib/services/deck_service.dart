@@ -96,4 +96,14 @@ class DeckService {
       return false;
     }
   }
+
+  static Future<bool> clearAllDecks() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return await prefs.remove(_decksKey);
+    } catch (e) {
+      print('Error clearing decks: $e');
+      return false;
+    }
+  }
 }

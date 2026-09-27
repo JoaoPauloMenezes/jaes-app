@@ -2,8 +2,6 @@ name: Build and Upload iOS (.ipa)
 
 on:
   workflow_dispatch:
-  push:
-    branches: [ main ]
 
 permissions:
   contents: read

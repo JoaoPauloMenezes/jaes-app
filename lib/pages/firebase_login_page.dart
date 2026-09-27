@@ -335,8 +335,8 @@ class _FirebaseLoginPageState extends State<FirebaseLoginPage> {
                 children: [
                   // Logo
                   Container(
-                    height: 100,
-                    width: 100,
+                    height: 250,
+                    width: 250,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: Colors.white,
@@ -356,15 +356,15 @@ class _FirebaseLoginPageState extends State<FirebaseLoginPage> {
                   const SizedBox(height: 40),
 
                   // Title
-                  const Text(
-                    'JAES App',
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
+                  // const Text(
+                  //   'JAES',
+                  //   style: TextStyle(
+                  //     fontSize: 32,
+                  //     fontWeight: FontWeight.bold,
+                  //     color: Colors.white,
+                  //   ),
+                  // ),
+                  // const SizedBox(height: 12),
 
                   // Subtitle
                   Text(

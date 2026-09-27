@@ -27,9 +27,31 @@ class DailyFlashcardSetService {
     // Try to load existing set
     final existing = await _loadSet();
 
-    // If set exists and is from today, return it
+    // Keep today's progress, but fill any unused slots with newly available cards.
     if (existing != null && existing.isFromToday()) {
-      return existing;
+      final existingIds = existing.flashcardIds.toSet();
+      final missingCount = _maxCardsPerDay - existingIds.length;
+      if (missingCount <= 0) {
+        return existing;
+      }
+
+      final newIds = _selectFlashcards(
+        availableFlashcards
+            .where((card) => !existingIds.contains(card.id))
+            .toList(),
+        missingCount,
+      );
+      if (newIds.isEmpty) {
+        return existing;
+      }
+
+      final completedSet = DailyFlashcardSet(
+        date: existing.date,
+        flashcardIds: [...existing.flashcardIds, ...newIds],
+      );
+      await _saveSet(completedSet);
+      await _syncAllDataToFirebase(completedSet);
+      return completedSet;
     }
 
     // Otherwise, create a new set for today

@@ -1,9 +1,12 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/app_user.dart';
+import '../services/data_sync_service.dart';
 import '../services/user_service.dart';
+import 'firebase_login_page.dart';
 
 class ConfigScreen extends StatefulWidget {
   const ConfigScreen({super.key});
@@ -19,11 +22,11 @@ class _ConfigScreenState extends State<ConfigScreen> {
   
   // Fixed pitch/rate combos exposed to the user as simple speed presets.
   static const List<Map<String, Object>> _speedPresets = [
-    {'key': 'muito_lento', 'label': 'Muito Lento', 'pitch': 0.85, 'rate': 0.6},
-    {'key': 'lento', 'label': 'Lento', 'pitch': 0.95, 'rate': 0.8},
-    {'key': 'normal', 'label': 'Normal', 'pitch': 1.0, 'rate': 1.0},
-    {'key': 'rapido', 'label': 'Rápido', 'pitch': 1.05, 'rate': 1.3},
-    {'key': 'muito_rapido', 'label': 'Muito Rápido', 'pitch': 1.15, 'rate': 1.6},
+    {'key': 'muito_lento', 'label': 'Muito Lento', 'pitch': 0.65, 'rate': 0.4},
+    {'key': 'lento', 'label': 'Lento', 'pitch': 0.75, 'rate': 0.6},
+    {'key': 'normal', 'label': 'Normal', 'pitch': 0.9, 'rate': 0.8},
+    {'key': 'rapido', 'label': 'Rápido', 'pitch': 0.95, 'rate': 1.0},
+    {'key': 'muito_rapido', 'label': 'Muito Rápido', 'pitch': 1.05, 'rate': 1.2},
   ];
 
   bool _ttsEnabled = true;
@@ -98,6 +101,71 @@ class _ConfigScreenState extends State<ConfigScreen> {
     }
   }
 
+  String _ttsSpeedTestPhrase() {
+    final locale = _ttsVoice.split('|').length > 1
+        ? _ttsVoice.split('|')[1].toLowerCase()
+        : '';
+    if (locale.startsWith('pt')) {
+      return 'Essa é a velocidade atual de leitura selecionada.';
+    }
+    if (locale.startsWith('es')) {
+      return 'Esta es la velocidad de lectura seleccionada actualmente.';
+    }
+    if (locale.startsWith('fr')) {
+      return 'Ceci est la vitesse de lecture actuellement sélectionnée.';
+    }
+    if (locale.startsWith('de')) {
+      return 'Dies ist die aktuell ausgewählte Lesegeschwindigkeit.';
+    }
+    return 'This is the currently selected reading speed.';
+  }
+
+  Future<void> _speakSpeedTest() async {
+    await _flutterTts.stop();
+    await _flutterTts.speak(_ttsSpeedTestPhrase());
+  }
+
+  Future<void> _logoutLocally() async {
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Sair deste dispositivo?'),
+        content: const Text(
+          'Os dados salvos neste dispositivo serão apagados. Os dados sincronizados no nosso servidor podem ser baixados novamente depois',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Sair e apagar'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldLogout != true || !mounted) return;
+
+    final cleared = await DataSyncService.clearAllLocalData();
+    await UserService.clearUser();
+    await GoogleSignIn().signOut();
+    await _firebaseAuth.signOut();
+
+    if (!mounted) return;
+    if (!cleared) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Nao foi possivel apagar todos os dados locais.')),
+      );
+      return;
+    }
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const FirebaseLoginPage()),
+      (_) => false,
+    );
+  }
+
   void _updateTtsEnabled(bool value) {
     setState(() {
       _ttsEnabled = value;
@@ -123,6 +191,7 @@ class _ConfigScreenState extends State<ConfigScreen> {
     _saveTtsSetting('tts_rate', rate);
     _flutterTts.setPitch(pitch);
     _flutterTts.setSpeechRate(rate);
+    _speakSpeedTest();
   }
 
   void _updateTtsVoice(String? value) {
@@ -178,6 +247,8 @@ class _ConfigScreenState extends State<ConfigScreen> {
 
           // TTS Configuration Section
           _buildTtsConfigSection(isNarrowScreen),
+          const SizedBox(height: 24),
+          _buildLocalLogoutSection(),
         ],
       ),
     );
@@ -440,6 +511,19 @@ class _ConfigScreenState extends State<ConfigScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildLocalLogoutSection() {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: ListTile(
+        leading: const Icon(Icons.logout, color: Colors.red),
+        title: const Text('Sair deste dispositivo'),
+        subtitle: const Text('Sai da conta atual e apaga os dados locais.'),
+        onTap: _logoutLocally,
       ),
     );
   }

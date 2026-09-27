@@ -96,4 +96,14 @@ class SetOfCardsService {
       return false;
     }
   }
+
+  static Future<bool> clearAllSets() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return await prefs.remove(_setsKey);
+    } catch (e) {
+      print('Error clearing sets: $e');
+      return false;
+    }
+  }
 }
