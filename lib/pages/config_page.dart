@@ -17,9 +17,19 @@ class _ConfigScreenState extends State<ConfigScreen> {
   final FlutterTts _flutterTts = FlutterTts();
   late SharedPreferences _prefs;
   
+  // Fixed pitch/rate combos exposed to the user as simple speed presets.
+  static const List<Map<String, Object>> _speedPresets = [
+    {'key': 'muito_lento', 'label': 'Muito Lento', 'pitch': 0.85, 'rate': 0.6},
+    {'key': 'lento', 'label': 'Lento', 'pitch': 0.95, 'rate': 0.8},
+    {'key': 'normal', 'label': 'Normal', 'pitch': 1.0, 'rate': 1.0},
+    {'key': 'rapido', 'label': 'Rápido', 'pitch': 1.05, 'rate': 1.3},
+    {'key': 'muito_rapido', 'label': 'Muito Rápido', 'pitch': 1.15, 'rate': 1.6},
+  ];
+
   bool _ttsEnabled = true;
   double _ttsPitch = 1.0;
   double _ttsRate = 1.0;
+  String _ttsSpeedPreset = 'normal';
   String _ttsVoice = '';
   List<dynamic> _availableVoices = [];
   AppUser? _currentUser;
@@ -48,7 +58,7 @@ class _ConfigScreenState extends State<ConfigScreen> {
         setState(() {
           _availableVoices = voices ?? [];
           if (_availableVoices.isNotEmpty && _ttsVoice.isEmpty) {
-            _ttsVoice = _availableVoices.first.toString();
+            _ttsVoice = _voiceKey(_availableVoices.first);
           }
         });
       }
@@ -61,9 +71,20 @@ class _ConfigScreenState extends State<ConfigScreen> {
     _prefs = await SharedPreferences.getInstance();
     setState(() {
       _ttsEnabled = _prefs.getBool('tts_enabled') ?? true;
-      _ttsPitch = _prefs.getDouble('tts_pitch') ?? 1.0;
-      _ttsRate = _prefs.getDouble('tts_rate') ?? 1.0;
-      _ttsVoice = _prefs.getString('tts_voice') ?? '';
+      final savedPreset = _prefs.getString('tts_speed_preset');
+      if (savedPreset != null &&
+          _speedPresets.any((p) => p['key'] == savedPreset)) {
+        _ttsSpeedPreset = savedPreset;
+      }
+      final preset = _speedPresets.firstWhere(
+        (p) => p['key'] == _ttsSpeedPreset,
+        orElse: () => _speedPresets[2],
+      );
+      _ttsPitch = preset['pitch'] as double;
+      _ttsRate = preset['rate'] as double;
+      final savedName = _prefs.getString('tts_voice_name') ?? '';
+      final savedLocale = _prefs.getString('tts_voice_locale') ?? '';
+      _ttsVoice = savedName.isNotEmpty ? '$savedName|$savedLocale' : '';
     });
   }
 
@@ -84,27 +105,37 @@ class _ConfigScreenState extends State<ConfigScreen> {
     _saveTtsSetting('tts_enabled', value);
   }
 
-  void _updateTtsPitch(double value) {
+  void _updateSpeedPreset(String? presetKey) {
+    if (presetKey == null) return;
+    final preset = _speedPresets.firstWhere(
+      (p) => p['key'] == presetKey,
+      orElse: () => _speedPresets[2],
+    );
+    final pitch = preset['pitch'] as double;
+    final rate = preset['rate'] as double;
     setState(() {
-      _ttsPitch = value;
+      _ttsSpeedPreset = presetKey;
+      _ttsPitch = pitch;
+      _ttsRate = rate;
     });
-    _saveTtsSetting('tts_pitch', value);
-  }
-
-  void _updateTtsRate(double value) {
-    setState(() {
-      _ttsRate = value;
-    });
-    _saveTtsSetting('tts_rate', value);
+    _saveTtsSetting('tts_speed_preset', presetKey);
+    _saveTtsSetting('tts_pitch', pitch);
+    _saveTtsSetting('tts_rate', rate);
+    _flutterTts.setPitch(pitch);
+    _flutterTts.setSpeechRate(rate);
   }
 
   void _updateTtsVoice(String? value) {
-    if (value != null) {
-      setState(() {
-        _ttsVoice = value;
-      });
-      _saveTtsSetting('tts_voice', value);
-    }
+    if (value == null) return;
+    final parts = value.split('|');
+    final name = parts.isNotEmpty ? parts[0] : '';
+    final locale = parts.length > 1 ? parts[1] : '';
+    setState(() {
+      _ttsVoice = value;
+    });
+    _saveTtsSetting('tts_voice_name', name);
+    _saveTtsSetting('tts_voice_locale', locale);
+    _flutterTts.setVoice({'name': name, 'locale': locale});
   }
 
   String _formatVoiceDisplay(dynamic voice) {
@@ -118,12 +149,14 @@ class _ConfigScreenState extends State<ConfigScreen> {
     }
   }
 
-  String _voiceToString(dynamic voice) {
+  // Builds a stable "name|locale" key so the dropdown value matches an item
+  // even though voice maps are new instances on every getVoices() call.
+  String _voiceKey(dynamic voice) {
     try {
-      if (voice is Map) {
-        return voice.toString();
-      }
-      return voice.toString();
+      final voiceMap = voice is Map ? voice : {};
+      final name = voiceMap['name'] ?? 'Default';
+      final locale = voiceMap['locale'] ?? 'Unknown';
+      return '$name|$locale';
     } catch (e) {
       return voice.toString();
     }
@@ -131,16 +164,20 @@ class _ConfigScreenState extends State<ConfigScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // iPhone 7 and other narrow devices (< 380 logical px) get tighter
+    // spacing so cards don't feel cramped or unbalanced.
+    final isNarrowScreen = MediaQuery.of(context).size.width < 380;
+    final outerPadding = isNarrowScreen ? 12.0 : 16.0;
     return Scaffold(
       body: ListView(
-        padding: const EdgeInsets.all(16.0),
+        padding: EdgeInsets.all(outerPadding),
         children: [
           // User Profile Section
           _buildUserProfileSection(_currentUser),
-          const SizedBox(height: 32),
+          SizedBox(height: isNarrowScreen ? 24 : 32),
 
           // TTS Configuration Section
-          _buildTtsConfigSection(),
+          _buildTtsConfigSection(isNarrowScreen),
         ],
       ),
     );
@@ -225,12 +262,14 @@ class _ConfigScreenState extends State<ConfigScreen> {
     );
   }
 
-  Widget _buildTtsConfigSection() {
+  Widget _buildTtsConfigSection(bool isNarrowScreen) {
+    final cardPadding = isNarrowScreen ? 12.0 : 16.0;
+    final titleFontSize = isNarrowScreen ? 16.0 : 18.0;
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: EdgeInsets.all(cardPadding),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -239,16 +278,20 @@ class _ConfigScreenState extends State<ConfigScreen> {
               children: [
                 Icon(Icons.volume_up, color: Colors.blue.shade600),
                 const SizedBox(width: 8),
-                const Text(
-                  'Text-to-Speech Configuration',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                Expanded(
+                  child: Text(
+                    'Text-to-Speech Configuration',
+                    style: TextStyle(
+                      fontSize: titleFontSize,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: isNarrowScreen ? 16 : 20),
 
             // Enable/Disable TTS
             Row(
@@ -280,135 +323,42 @@ class _ConfigScreenState extends State<ConfigScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: isNarrowScreen ? 16 : 20),
 
-            // Pitch Control
+            // Speed Preset Selection
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Pitch',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.shade100,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        _ttsPitch.toStringAsFixed(2),
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.blue.shade600,
-                        ),
-                      ),
-                    ),
-                  ],
+                const Text(
+                  'Velocidade da Voz',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
                 const SizedBox(height: 8),
-                Slider(
-                  value: _ttsPitch,
-                  min: 0.5,
-                  max: 2.0,
-                  divisions: 15,
-                  label: _ttsPitch.toStringAsFixed(2),
-                  onChanged: _updateTtsPitch,
-                  activeColor: Colors.blue.shade600,
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Low',
-                        style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                      ),
-                      Text(
-                        'High',
-                        style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                      ),
-                    ],
+                Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade300),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: DropdownButton<String>(
+                    isExpanded: true,
+                    value: _ttsSpeedPreset,
+                    items: _speedPresets.map((preset) {
+                      return DropdownMenuItem<String>(
+                        value: preset['key'] as String,
+                        child: Text(preset['label'] as String),
+                      );
+                    }).toList(),
+                    onChanged: _updateSpeedPreset,
+                    underline: const SizedBox(),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 24),
-
-            // Rate Control
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Speech Rate',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.green.shade100,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        _ttsRate.toStringAsFixed(2),
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green.shade600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Slider(
-                  value: _ttsRate,
-                  min: 0.5,
-                  max: 2.0,
-                  divisions: 15,
-                  label: _ttsRate.toStringAsFixed(2),
-                  onChanged: _updateTtsRate,
-                  activeColor: Colors.green.shade600,
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Slow',
-                        style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                      ),
-                      Text(
-                        'Fast',
-                        style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
+            SizedBox(height: isNarrowScreen ? 18 : 24),
 
             // Voice Selection
             Column(
@@ -434,33 +384,57 @@ class _ConfigScreenState extends State<ConfigScreen> {
                           style: TextStyle(color: Colors.grey.shade600),
                         ),
                       )
-                    : Container(
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade300),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: DropdownButton<String>(
-                          isExpanded: true,
-                          value: _ttsVoice.isNotEmpty ? _ttsVoice : null,
-                          hint: Text(
-                            'Select a voice',
-                            style: TextStyle(color: Colors.grey.shade600),
-                          ),
-                          items: _availableVoices.map((voice) {
-                            final voiceStr = _voiceToString(voice);
-                            final voiceDisplay = _formatVoiceDisplay(voice);
-                            return DropdownMenuItem<String>(
-                              value: voiceStr,
-                              child: Text(
-                                voiceDisplay,
+                    : Builder(
+                        builder: (context) {
+                          final voiceKeys = _availableVoices
+                              .map((voice) => _voiceKey(voice))
+                              .toList();
+                          // Guard against a stale/unknown saved value, which
+                          // would otherwise crash the DropdownButton.
+                          final currentValue =
+                              voiceKeys.contains(_ttsVoice) ? _ttsVoice : null;
+                          return Container(
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey.shade300),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: DropdownButton<String>(
+                              isExpanded: true,
+                              value: currentValue,
+                              hint: Text(
+                                'Select a voice',
+                                style: TextStyle(color: Colors.grey.shade600),
                                 overflow: TextOverflow.ellipsis,
                               ),
-                            );
-                          }).toList(),
-                          onChanged: _updateTtsVoice,
-                          underline: const SizedBox(),
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                        ),
+                              selectedItemBuilder: (context) {
+                                return _availableVoices.map((voice) {
+                                  return Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: Text(
+                                      _formatVoiceDisplay(voice),
+                                      overflow: TextOverflow.ellipsis,
+                                      maxLines: 1,
+                                    ),
+                                  );
+                                }).toList();
+                              },
+                              items: _availableVoices.map((voice) {
+                                final voiceStr = _voiceKey(voice);
+                                final voiceDisplay = _formatVoiceDisplay(voice);
+                                return DropdownMenuItem<String>(
+                                  value: voiceStr,
+                                  child: Text(
+                                    voiceDisplay,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: _updateTtsVoice,
+                              underline: const SizedBox(),
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                            ),
+                          );
+                        },
                       ),
               ],
             ),

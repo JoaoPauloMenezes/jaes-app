@@ -62,16 +62,20 @@ class _FlashcardPageState extends State<FlashcardPage> {
       final bool ttsEnabled = prefs.getBool('tts_enabled') ?? true;
       final double ttsPitch = prefs.getDouble('tts_pitch') ?? 1.0;
       final double ttsRate = prefs.getDouble('tts_rate') ?? 1.0;
-      final String ttsVoice = prefs.getString('tts_voice') ?? '';
+      final String ttsVoiceName = prefs.getString('tts_voice_name') ?? '';
+      final String ttsVoiceLocale = prefs.getString('tts_voice_locale') ?? '';
 
       // Apply TTS settings
       await _flutterTts.setLanguage('en-US');
       await _flutterTts.setPitch(ttsPitch);
       await _flutterTts.setSpeechRate(ttsRate);
 
-      if (ttsVoice.isNotEmpty) {
+      if (ttsVoiceName.isNotEmpty) {
         try {
-          await _flutterTts.setVoice({"name": ttsVoice, "locale": "en-US"});
+          await _flutterTts.setVoice({
+            'name': ttsVoiceName,
+            'locale': ttsVoiceLocale,
+          });
         } catch (e) {
           print('Error setting voice: $e');
         }
