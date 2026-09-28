@@ -4,16 +4,30 @@ import '/models/flashcard.dart';
 import '/services/firebase_flashcard_service.dart';
 import '/services/flashcard_service.dart';
 
-class AddFlashcardScreen extends StatefulWidget {
+class AddFlashcardScreen extends StatelessWidget {
   final String deckId;
 
   const AddFlashcardScreen({Key? key, required this.deckId}) : super(key: key);
 
   @override
-  State<AddFlashcardScreen> createState() => _AddFlashcardScreenState();
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Add Flashcard'), elevation: 0),
+      body: AddFlashcardForm(deckId: deckId),
+    );
+  }
 }
 
-class _AddFlashcardScreenState extends State<AddFlashcardScreen> {
+class AddFlashcardForm extends StatefulWidget {
+  final String deckId;
+
+  const AddFlashcardForm({Key? key, required this.deckId}) : super(key: key);
+
+  @override
+  State<AddFlashcardForm> createState() => _AddFlashcardFormState();
+}
+
+class _AddFlashcardFormState extends State<AddFlashcardForm> {
   late TextEditingController _frontController;
   late TextEditingController _backController;
   final _formKey = GlobalKey<FormState>();
@@ -113,11 +127,9 @@ class _AddFlashcardScreenState extends State<AddFlashcardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Add Flashcard'), elevation: 0),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -208,7 +220,6 @@ class _AddFlashcardScreenState extends State<AddFlashcardScreen> {
               ),
             ],
           ),
-        ),
       ),
     );
   }

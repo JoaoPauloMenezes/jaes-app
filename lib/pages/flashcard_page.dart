@@ -239,7 +239,7 @@ class _FlashcardPageState extends State<FlashcardPage> {
         availableCards,
       );
 
-      if (dailySet == null || dailySet.flashcardIds.isEmpty) {
+      if (dailySet == null) {
         setState(() {
           _activeCards = [];
           _allActiveFlashcards = availableCards;
@@ -250,13 +250,40 @@ class _FlashcardPageState extends State<FlashcardPage> {
 
       // Filter cards to only include those in today's daily set
       final dailySetIds = dailySet.flashcardIds.toSet();
-      final cardsForToday = availableCards
-          .where((card) => dailySetIds.contains(card.id))
-          .toList();
+      final today = DateTime.now();
+      final answeredToday = (await ShortTermMemoService.getAllMemos())
+          .where((memo) {
+            final date = memo.lastTestDate;
+            return date.year == today.year &&
+                date.month == today.month &&
+                date.day == today.day;
+          })
+          .map((memo) => memo.flashcardId)
+          .toSet();
+      final cardsForToday =
+          availableCards
+              .where(
+                (card) =>
+                    dailySetIds.contains(card.id) &&
+                    !answeredToday.contains(card.id),
+              )
+              .toList()
+            ..sort(
+              (a, b) => dailySet.flashcardIds
+                  .indexOf(a.id)
+                  .compareTo(dailySet.flashcardIds.indexOf(b.id)),
+            );
+      final dailySetCards =
+          allCards.where((card) => dailySetIds.contains(card.id)).toList()
+            ..sort(
+              (a, b) => dailySet.flashcardIds
+                  .indexOf(a.id)
+                  .compareTo(dailySet.flashcardIds.indexOf(b.id)),
+            );
 
       setState(() {
         _activeCards = cardsForToday;
-        _allActiveFlashcards = availableCards;
+        _allActiveFlashcards = dailySetCards;
         _isLoading = false;
       });
     } catch (e) {
@@ -284,14 +311,6 @@ class _FlashcardPageState extends State<FlashcardPage> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    // If no active cards, show error message
-    if (_activeCards.isEmpty) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Flashcards')),
-        body: const Center(child: Text('No active flashcards')),
-      );
-    }
-
     // Show summary initially, or when all cards are tested
     if (!_isStudying || (_activeCards.isEmpty && _testedCards.isNotEmpty)) {
       return Scaffold(
@@ -300,9 +319,10 @@ class _FlashcardPageState extends State<FlashcardPage> {
             DailySetSummaryWidget(
               testedCards: _allActiveFlashcards,
               onResetDaily: _resetDailySet,
+              hasRemainingCards: _activeCards.isNotEmpty,
             ),
             // Start button in the middle-lower portion of the page
-            if (_testedCards.isEmpty)
+            if (_activeCards.isNotEmpty)
               Positioned(
                 bottom: 100,
                 left: 0,
@@ -320,6 +340,18 @@ class _FlashcardPageState extends State<FlashcardPage> {
                       backgroundColor: Colors.blue,
                       foregroundColor: Colors.white,
                     ),
+                  ),
+                ),
+              ),
+            if (_activeCards.isEmpty)
+              const Positioned(
+                bottom: 100,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Text(
+                    'No active flashcards',
+                    style: TextStyle(fontSize: 16, color: Colors.grey),
                   ),
                 ),
               ),
@@ -344,6 +376,7 @@ class _FlashcardPageState extends State<FlashcardPage> {
           ),
           body: FlashcardStackWidget(
             activeCards: _activeCards,
+            allCards: _allActiveFlashcards,
             isBackVisible: _isBackVisible,
             onShowBack: (flashcardId) {
               setState(() {
@@ -386,6 +419,12 @@ class _FlashcardPageState extends State<FlashcardPage> {
               setState(() {
                 _activeCards.removeAt(cardIndex);
                 _testedCards.add(updatedCard);
+                final summaryIndex = _allActiveFlashcards.indexWhere(
+                  (item) => item.id == updatedCard.id,
+                );
+                if (summaryIndex != -1) {
+                  _allActiveFlashcards[summaryIndex] = updatedCard;
+                }
                 _cardsTestedCount++;
 
                 // Check if we should show matching test

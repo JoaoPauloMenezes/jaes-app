@@ -39,9 +39,7 @@ class ShortTermMemoService {
   static Future<bool> saveMemo(ShortTermMemo memo) async {
     try {
       final memos = await getAllMemos();
-      // Remove existing memo for this flashcard if it exists
-      // memos.removeWhere((m) => m.flashcardId == memo.flashcardId);
-      // Add new memo
+      memos.removeWhere((m) => m.flashcardId == memo.flashcardId);
       memos.add(memo);
       return await saveMemos(memos);
     } catch (e) {

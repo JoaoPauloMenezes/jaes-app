@@ -6,6 +6,7 @@ import '../widgets/swipeable_card.dart';
 
 class FlashcardStackWidget extends StatelessWidget {
   final List<Flashcard> activeCards;
+  final List<Flashcard> allCards;
   final Map<String, bool> isBackVisible;
   final Function(String flashcardId) onShowBack;
   final Function(String flashcardId) onShowFront;
@@ -17,6 +18,7 @@ class FlashcardStackWidget extends StatelessWidget {
   const FlashcardStackWidget({
     super.key,
     required this.activeCards,
+    required this.allCards,
     required this.isBackVisible,
     required this.onShowBack,
     required this.onShowFront,
@@ -52,12 +54,15 @@ class FlashcardStackWidget extends StatelessWidget {
         height: cardHeight + extraReserve,
         child: Stack(
           clipBehavior: Clip.none,
-          children: List.generate(n, (i) => i).reversed.map((index) {
-            final int cardIndex = index;
-            final flashcard = activeCards[cardIndex];
+          children: activeCards.asMap().entries.toList().reversed.map((entry) {
+            final int cardIndex = entry.key;
+            final flashcard = entry.value;
+            final int originalCardIndex = allCards.indexWhere(
+              (card) => card.id == flashcard.id,
+            );
             final double topOffset = (cardIndex) * spacing;
             final double whiteOverlayOpacity = n > 1
-                ? (index / (n - 1)) * 0.6
+                ? (cardIndex / (n - 1)) * 0.6
                 : 0.0;
             return Positioned(
               top: topOffset,
@@ -76,7 +81,7 @@ class FlashcardStackWidget extends StatelessWidget {
                   whiteOverlayOpacity: whiteOverlayOpacity,
                   child: CardContainer(
                     forcedHeight: cardHeight,
-                    cardNumber: cardIndex + 1,
+                    cardNumber: originalCardIndex + 1,
                     frontText: flashcard.frontText,
                     backText: flashcard.backText,
                     onShowBack: (text) {

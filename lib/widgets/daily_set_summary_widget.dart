@@ -6,11 +6,13 @@ import '../enums/flashcard_state.dart';
 class DailySetSummaryWidget extends StatelessWidget {
   final List<Flashcard> testedCards;
   final VoidCallback onResetDaily;
+  final bool hasRemainingCards;
 
   const DailySetSummaryWidget({
     Key? key,
     required this.testedCards,
     required this.onResetDaily,
+    required this.hasRemainingCards,
   }) : super(key: key);
 
   @override
@@ -30,8 +32,8 @@ class DailySetSummaryWidget extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text(
-              'Great job! You finished today\'s flashcards!',
+            Text(
+              _summaryMessage,
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
@@ -72,6 +74,16 @@ class DailySetSummaryWidget extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String get _summaryMessage {
+    if (testedCards.isEmpty) {
+      return 'Add flashcards to begin your daily set.';
+    }
+    if (hasRemainingCards) {
+      return 'Your daily flashcards are ready!';
+    }
+    return 'Great job! You finished today\'s flashcards!';
   }
 }
 

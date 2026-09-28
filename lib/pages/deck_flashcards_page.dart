@@ -66,10 +66,7 @@ class _DeckFlashcardsPageState extends State<DeckFlashcardsPage> {
                 autofocus: true,
               ),
               const SizedBox(height: 16),
-              _buildSpeechTextField(
-                controller: backController,
-                label: 'Back',
-              ),
+              _buildSpeechTextField(controller: backController, label: 'Back'),
             ],
           ),
         ),
@@ -148,17 +145,29 @@ class _DeckFlashcardsPageState extends State<DeckFlashcardsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.deckTitle == null || widget.deckTitle!.isEmpty
-            ? 'Deck Flashcards'
-            : 'Cards — ${widget.deckTitle}'),
+        title: Text(
+          widget.deckTitle == null || widget.deckTitle!.isEmpty
+              ? 'Deck Flashcards'
+              : 'Cards — ${widget.deckTitle}',
+        ),
       ),
       floatingActionButton: FloatingActionButton(
         tooltip: 'Add flashcard',
         onPressed: () async {
-          final added = await Navigator.push<bool>(
-            context,
-            MaterialPageRoute(
-              builder: (context) => AddFlashcardScreen(deckId: widget.deckId),
+          final added = await showDialog<bool>(
+            context: context,
+            builder: (context) => Dialog(
+              insetPadding: const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: 72,
+              ),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: 440,
+                  maxHeight: MediaQuery.of(context).size.height * 0.7,
+                ),
+                child: AddFlashcardForm(deckId: widget.deckId),
+              ),
             ),
           );
           if (added == true) {
@@ -170,40 +179,44 @@ class _DeckFlashcardsPageState extends State<DeckFlashcardsPage> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _cards.isEmpty
-              ? const Center(child: Text('No flashcards in this deck'))
-              : ListView.builder(
-                  itemCount: _cards.length,
-                  itemBuilder: (context, index) {
-                    final card = _cards[index];
-                    return Card(
-                      child: ListTile(
-                        onTap: () => _editFlashcard(card),
-                        title: Text(
-                          card.frontText,
-                          style: TextStyle(
-                            color: card.isEnabled ? Colors.black : Colors.grey,
-                          ),
-                        ),
-                        trailing: PopupMenuButton<String>(
-                          onSelected: (value) async {
-                            if (value == 'toggle') {
-                              final updated = card.copyWith(isEnabled: !card.isEnabled);
-                              await FlashcardService.updateFlashcard(updated);
-                              await FirebaseFlashcardService.updateFlashcard(updated);
-                              await _loadCards();
-                            }
-                          },
-                          itemBuilder: (context) => [
-                            PopupMenuItem(
-                              value: 'toggle',
-                              child: Text(card.isEnabled ? 'Disable' : 'Enable'),
-                            ),
-                          ],
-                        ),
+          ? const Center(child: Text('No flashcards in this deck'))
+          : ListView.builder(
+              itemCount: _cards.length,
+              itemBuilder: (context, index) {
+                final card = _cards[index];
+                return Card(
+                  child: ListTile(
+                    onTap: () => _editFlashcard(card),
+                    title: Text(
+                      card.frontText,
+                      style: TextStyle(
+                        color: card.isEnabled ? Colors.black : Colors.grey,
                       ),
-                    );
-                  },
-                ),
+                    ),
+                    trailing: PopupMenuButton<String>(
+                      onSelected: (value) async {
+                        if (value == 'toggle') {
+                          final updated = card.copyWith(
+                            isEnabled: !card.isEnabled,
+                          );
+                          await FlashcardService.updateFlashcard(updated);
+                          await FirebaseFlashcardService.updateFlashcard(
+                            updated,
+                          );
+                          await _loadCards();
+                        }
+                      },
+                      itemBuilder: (context) => [
+                        PopupMenuItem(
+                          value: 'toggle',
+                          child: Text(card.isEnabled ? 'Disable' : 'Enable'),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
     );
   }
 }
