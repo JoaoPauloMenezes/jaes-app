@@ -3,7 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:io' show Platform;
+import 'dart:convert';
+import 'dart:math';
+import 'package:crypto/crypto.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../models/app_user.dart';
 import '../services/user_service.dart';
 import '../services/data_sync_service.dart';
@@ -24,12 +28,14 @@ class _FirebaseLoginPageState extends State<FirebaseLoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isGoogleSignInSupported = true;
+  bool _isAppleSignInSupported = false;
 
   @override
   void initState() {
     super.initState();
     // Check if Google Sign-In is supported on this platform
     _isGoogleSignInSupported = _checkGoogleSignInSupport();
+    _isAppleSignInSupported = _checkAppleSignInSupport();
     // Delay the current-user check until after the first frame to avoid
     // performing navigation or calling setState during the build phase.
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -47,6 +53,97 @@ class _FirebaseLoginPageState extends State<FirebaseLoginPage> {
       return true;
     } catch (e) {
       return true; // Default to true if platform check fails
+    }
+  }
+
+  bool _checkAppleSignInSupport() {
+    if (kIsWeb) return false;
+    try {
+      return Platform.isIOS;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  String _generateNonce([int length = 32]) {
+    const charset =
+        '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
+    final random = Random.secure();
+    return List.generate(
+      length,
+      (_) => charset[random.nextInt(charset.length)],
+    ).join();
+  }
+
+  Future<void> _signInWithApple() async {
+    if (_isLoading) return;
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final rawNonce = _generateNonce();
+      final appleCredential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+        nonce: sha256.convert(utf8.encode(rawNonce)).toString(),
+      );
+      final oauthCredential = OAuthProvider('apple.com').credential(
+        idToken: appleCredential.identityToken,
+        rawNonce: rawNonce,
+      );
+      final userCredential =
+          await _firebaseAuth.signInWithCredential(oauthCredential);
+      final firebaseUser = userCredential.user;
+      if (firebaseUser == null) {
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      final appleName = [
+        appleCredential.givenName,
+        appleCredential.familyName,
+      ].whereType<String>().where((part) => part.isNotEmpty).join(' ');
+      if (appleName.isNotEmpty &&
+          (firebaseUser.displayName == null ||
+              firebaseUser.displayName!.isEmpty)) {
+        await firebaseUser.updateDisplayName(appleName);
+      }
+
+      final role = await FirebaseUserService.getCurrentUserRole();
+      final user = AppUser.fromFirebaseUser(
+        firebaseUser.uid,
+        firebaseUser.displayName?.isNotEmpty == true
+            ? firebaseUser.displayName
+            : appleName,
+        firebaseUser.email ?? appleCredential.email,
+        firebaseUser.photoURL,
+        role: role,
+      );
+      await UserService.saveUser(user);
+      await FirebaseUserService.saveUser(user);
+      await DataSyncService.performFullSync();
+      _navigateToHome();
+    } on SignInWithAppleAuthorizationException catch (e) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = e.code == AuthorizationErrorCode.canceled
+            ? null
+            : 'Apple Sign-In failed: ${e.message}';
+      });
+    } on FirebaseAuthException catch (e) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Apple Sign-In failed: ${e.message}';
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Apple Sign-In failed: $e';
+      });
     }
   }
 
@@ -464,6 +561,22 @@ class _FirebaseLoginPageState extends State<FirebaseLoginPage> {
                         ],
                       ),
                     ),
+                  ],
+
+                  if (_isAppleSignInSupported) ...[
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: AbsorbPointer(
+                        absorbing: _isLoading,
+                        child: SignInWithAppleButton(
+                          onPressed: _signInWithApple,
+                          style: SignInWithAppleButtonStyle.black,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
                   ],
 
                   // Google Sign-In Button (for mobile and web)
