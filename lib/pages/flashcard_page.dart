@@ -360,7 +360,7 @@ class _FlashcardPageState extends State<FlashcardPage> {
       );
     }
 
-    return Stac
+    return Stack(
       children: [
         Scaffold(
           appBar: AppBar(
