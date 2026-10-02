@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Política de Privacidade do aplicativo JAES.">
+  <meta name="theme-color" content="#155ac1">
+  <title>Política de Privacidade | JAES</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --blue-950: #10366f;
+      --blue-800: #155ac1;
+      --blue-600: #2879e5;
+      --blue-100: #e9f2ff;
+      --ink: #17243a;
+      --muted: #52627a;
+      --line: #dce5f1;
+      --paper: #ffffff;
+      --canvas: #f3f7fc;
+      --warning: #76521a;
+      --warning-bg: #fff5df;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      background: var(--canvas);
+      color: var(--ink);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 16px;
+      line-height: 1.7;
+    }
+
+    a { color: var(--blue-800); }
+    a:hover { color: var(--blue-950); }
+    a:focus-visible { outline: 3px solid #f0b429; outline-offset: 3px; }
+
+    .skip-link {
+      position: absolute;
+      left: 12px;
+      top: -60px;
+      z-index: 2;
+      padding: 10px 14px;
+      background: var(--paper);
+      color: var(--blue-950);
+    }
+
+    .skip-link:focus { top: 12px; }
+
+    .masthead {
+      background: linear-gradient(115deg, var(--blue-950), var(--blue-800) 58%, var(--blue-600));
+      color: var(--paper);
+    }
+
+    .masthead-inner,
+    .page-layout,
+    .footer-inner {
+      width: min(1100px, calc(100% - 40px));
+      margin-inline: auto;
+    }
+
+    .masthead-inner { padding: 26px 0 34px; }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 13px;
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .brand-mark {
+      display: grid;
+      width: 62px;
+      height: 62px;
+      flex: 0 0 62px;
+      place-items: center;
+      overflow: hidden;
+      border-radius: 50%;
+      background: var(--paper);
+    }
+
+    .brand-mark img { display: block; width: 100%; height: 100%; object-fit: contain; }
+
+    .brand-name { display: block; font-size: 18px; font-weight: 750; line-height: 1.2; }
+    .brand-tagline { display: block; margin-top: 3px; color: #d9e8ff; font-size: 12px; }
+
+    .eyebrow {
+      margin: 25px 0 5px;
+      color: #d9e8ff;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      max-width: 760px;
+      margin: 0;
+      font-size: clamp(30px, 5vw, 43px);
+      line-height: 1.14;
+    }
+
+    .updated { margin: 12px 0 0; color: #e4efff; font-size: 14px; }
+
+    .page-layout {
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr);
+      align-items: start;
+      gap: 32px;
+      padding-block: 32px 54px;
+    }
+
+    .contents {
+      position: sticky;
+      top: 20px;
+      padding: 5px 0 5px 15px;
+      border-left: 2px solid var(--line);
+    }
+
+    .contents h2 {
+      margin: 0 0 10px;
+      color: var(--blue-950);
+      font-size: 14px;
+    }
+
+    .contents ol { margin: 0; padding-left: 18px; }
+    .contents li { padding-block: 3px; color: var(--muted); font-size: 13px; }
+    .contents a { color: inherit; text-decoration: none; }
+    .contents a:hover { color: var(--blue-800); text-decoration: underline; }
+
+    .policy {
+      min-width: 0;
+      padding: clamp(24px, 5vw, 52px);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+      box-shadow: 0 12px 32px rgb(16 54 111 / 6%);
+    }
+
+    .notice {
+      margin: 0 0 30px;
+      padding: 15px 18px;
+      border-left: 4px solid #e7a82b;
+      background: var(--warning-bg);
+      color: var(--warning);
+      font-size: 14px;
+    }
+
+    .contact {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 24px;
+      margin: 16px 0 0;
+    }
+
+    .contact div { min-width: 0; }
+    .contact dt { color: var(--muted); font-size: 13px; }
+    .contact dd { margin: 1px 0 0; overflow-wrap: anywhere; }
+
+    .policy h2 {
+      margin: 36px 0 10px;
+      padding-top: 6px;
+      color: var(--blue-950);
+      font-size: 21px;
+      line-height: 1.35;
+      scroll-margin-top: 20px;
+    }
+
+    .policy h2:first-of-type { margin-top: 26px; }
+    .policy p { margin: 10px 0; }
+    .policy ul { padding-left: 23px; }
+    .policy li { margin: 7px 0; }
+    .placeholder { color: #8a4b00; font-weight: 700; }
+    .footnote { color: var(--muted); font-size: 14px; }
+
+    footer {
+      border-top: 1px solid var(--line);
+      background: #eaf1fa;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .footer-inner { padding-block: 18px; }
+
+    @media (max-width: 760px) {
+      .masthead-inner,
+      .page-layout,
+      .footer-inner { width: min(100% - 28px, 640px); }
+
+      .masthead-inner { padding-block: 20px 27px; }
+      .brand-mark { width: 52px; height: 52px; flex-basis: 52px; }
+
+      .page-layout { grid-template-columns: 1fr; gap: 18px; padding-block: 20px 36px; }
+
+      .contents {
+        position: static;
+        padding: 0;
+        border: 0;
+      }
+
+      .contents details {
+        padding: 12px 15px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: var(--paper);
+      }
+
+      .contents h2 { display: inline; }
+      .contents ol { margin-top: 9px; }
+      .policy { padding: 23px 20px; }
+      .contact { grid-template-columns: 1fr; gap: 10px; }
+    }
+
+    @media print {
+      body { background: #fff; color: #111; font-size: 11pt; }
+      .masthead { background: #fff; color: #111; border-bottom: 2px solid #155ac1; }
+      .masthead-inner { padding: 12px 0; }
+      .brand-mark, .contents, .notice { display: none; }
+      .brand-tagline, .eyebrow, .updated { color: #333; }
+      .page-layout { display: block; width: 100%; padding: 0; }
+      .policy { padding: 0; border: 0; box-shadow: none; }
+      .policy h2 { break-after: avoid; }
+      a { color: inherit; text-decoration: none; }
+      footer { background: #fff; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
+
+  <header class="masthead">
+    <div class="masthead-inner">
+      <a class="brand" href="./" aria-label="JAES, página inicial">
+        <span class="brand-mark">
+          <img src="../assets/SchoolLogoTransparente.png" alt="">
+        </span>
+        <span>
+          <span class="brand-name">JAES</span>
+          <span class="brand-tagline">Inglês na simplicidade</span>
+        </span>
+      </a>
+      <p class="eyebrow">Informações legais</p>
+      <h1>Política de Privacidade</h1>
+      <p class="updated">Última atualização: 1º de outubro de 2026</p>
+    </div>
+  </header>
+
+  <main class="page-layout" id="conteudo">
+    <nav class="contents" aria-label="Índice da política">
+      <details open>
+        <summary><h2>Nesta página</h2></summary>
+        <ol>
+          <li><a href="#responsavel">Responsável</a></li>
+          <li><a href="#dados">Dados tratados</a></li>
+          <li><a href="#uso">Como usamos os dados</a></li>
+          <li><a href="#servicos">Serviços de terceiros</a></li>
+          <li><a href="#retencao">Armazenamento e retenção</a></li>
+          <li><a href="#direitos">Exclusão e direitos</a></li>
+          <li><a href="#menores">Menores de idade</a></li>
+          <li><a href="#seguranca">Segurança e alterações</a></li>
+          <li><a href="#contato">Contato</a></li>
+        </ol>
+      </details>
+    </nav>
+
+    <article class="policy">
+      <p class="notice"><strong>Antes de publicar:</strong> substitua todos os campos destacados entre colchetes. Em particular, informe o responsável legal, um e-mail de contato, a faixa etária do público e o prazo real de retenção de backups.</p>
+
+      <p>Esta política explica como o aplicativo JAES trata dados pessoais quando você cria uma conta, estuda com flashcards ou usa os recursos disponíveis no app.</p>
+
+      <h2 id="responsavel">1. Responsável pelo aplicativo</h2>
+      <dl class="contact">
+        <div>
+          <dt>Responsável</dt>
+          <dd class="placeholder">[Nome legal da pessoa ou organização]</dd>
+        </div>
+        <div>
+          <dt>País e endereço de contato</dt>
+          <dd class="placeholder">[País e endereço postal ou comercial]</dd>
+        </div>
+        <div>
+          <dt>E-mail de privacidade e suporte</dt>
+          <dd><a class="placeholder" href="mailto:[EMAIL-DE-CONTATO]">[E-mail monitorado]</a></dd>
+        </div>
+      </dl>
+
+      <h2 id="dados">2. Dados tratados</h2>
+      <p>Dependendo dos recursos usados, o JAES trata as seguintes categorias de dados:</p>
+      <ul>
+        <li><strong>Dados da conta:</strong> identificador da conta, e-mail, nome e foto de perfil quando fornecidos pelo método de login. O login pode ser feito com e-mail e senha, Google ou Apple. A Apple pode fornecer um endereço de retransmissão de e-mail se você escolher essa opção.</li>
+        <li><strong>Conteúdo de estudo:</strong> títulos e descrições de baralhos, perguntas e respostas dos flashcards, conjuntos de estudo, estado dos cartões e progresso, incluindo datas e resultados de exercícios.</li>
+        <li><strong>Preferências locais:</strong> configurações de leitura por voz, como voz, idioma e velocidade, armazenadas no dispositivo.</li>
+        <li><strong>Dados técnicos dos fornecedores:</strong> Firebase, Google e Apple podem tratar dados técnicos e de segurança necessários para autenticação e funcionamento de seus serviços, conforme as respectivas políticas.</li>
+      </ul>
+
+      <h2 id="uso">3. Como usamos os dados</h2>
+      <p>Usamos os dados para autenticar usuários, fornecer as funções de estudo, guardar e sincronizar conteúdo entre dispositivos, manter o progresso, aplicar as preferências de leitura por voz, proteger o serviço e responder a solicitações de suporte.</p>
+      <p>Não vendemos dados pessoais. O JAES não usa os dados de estudo para publicidade personalizada.</p>
+
+      <h2 id="servicos">4. Serviços de terceiros</h2>
+      <p>O JAES usa Firebase Authentication e Firebase Realtime Database para autenticação e armazenamento/sincronização de dados. Google e Apple processam as informações necessárias quando você escolhe seus métodos de login. O recurso de leitura em voz alta usa o serviço de síntese de fala do sistema operacional; o modo de processamento depende do dispositivo, da voz instalada e das configurações do usuário.</p>
+      <p>Esses fornecedores podem processar dados em outros países, de acordo com suas configurações, infraestrutura e políticas. Consulte também as políticas de privacidade do Google, da Apple e do Firebase.</p>
+
+      <h2 id="retencao">5. Armazenamento e retenção</h2>
+      <p>Os dados de estudo podem ser armazenados no dispositivo e sincronizados com o Firebase enquanto a conta estiver ativa. Mantemos dados pelo tempo necessário para fornecer o serviço e cumprir obrigações legais.</p>
+      <p>Após a exclusão da conta, cópias de segurança podem permanecer por um período limitado antes de serem removidas dos ciclos de backup: <span class="placeholder">[Informe o prazo real ou descreva a política de retenção aplicável]</span>.</p>
+
+      <h2 id="direitos">6. Exclusão e direitos do usuário</h2>
+      <p>Você pode solicitar a exclusão da conta e dos dados associados pela opção <strong>Configurações &gt; Apagar conta</strong> no aplicativo. A exclusão remove os dados da conta nos sistemas do JAES e os dados locais do dispositivo, ressalvadas cópias de backup durante o prazo de retenção informado acima e dados que precisem ser mantidos por obrigação legal.</p>
+      <p>Você também pode entrar em contato para solicitar acesso, correção ou exclusão de dados, ou para fazer perguntas sobre privacidade. Os direitos disponíveis dependem da legislação aplicável, incluindo, quando pertinente, a Lei Geral de Proteção de Dados brasileira (LGPD).</p>
+
+      <h2 id="menores">7. Crianças e adolescentes</h2>
+      <p>O JAES é destinado a <span class="placeholder">[Informe a faixa etária e se o app é direcionado a crianças ou adolescentes]</span>. Se o público incluir menores de idade, o responsável pelo app deve implementar e descrever os consentimentos, avisos e controles exigidos pelas leis aplicáveis e pelas regras da App Store antes da publicação.</p>
+
+      <h2 id="seguranca">8. Segurança e alterações desta política</h2>
+      <p>Adotamos medidas razoáveis para proteger os dados, mas nenhum método de armazenamento ou transmissão é totalmente seguro. Esta política pode ser atualizada quando o app ou suas práticas mudarem. A versão vigente será publicada neste endereço, com a data da última atualização.</p>
+
+      <h2 id="contato">9. Contato</h2>
+      <p>Para dúvidas, solicitações ou reclamações relacionadas à privacidade, entre em contato com <a class="placeholder" href="mailto:[EMAIL-DE-CONTATO]">[E-mail de privacidade]</a>.</p>
+    </article>
+  </main>
+
+  <footer>
+    <div class="footer-inner">JAES · Política de Privacidade · Atualizada em 1º de outubro de 2026</div>
+  </footer>
+</body>
+</html>
