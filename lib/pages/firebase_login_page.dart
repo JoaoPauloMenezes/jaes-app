@@ -8,6 +8,7 @@ import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+import '../utils/privacy_policy.dart';
 import '../models/app_user.dart';
 import '../services/user_service.dart';
 import '../services/data_sync_service.dart';
@@ -156,9 +157,9 @@ class _FirebaseLoginPageState extends State<FirebaseLoginPage> {
       // Perform background sync
       DataSyncService.performFullSync().then((success) {
         if (success) {
-          print('Background sync completed successfully');
+          debugPrint('Background sync completed successfully');
         } else {
-          print('Background sync failed');
+          debugPrint('Background sync failed');
         }
       });
       _navigateToHome();
@@ -205,9 +206,7 @@ class _FirebaseLoginPageState extends State<FirebaseLoginPage> {
       );
 
       GoogleSignInAccount? googleUser = await googleSignIn.signInSilently();
-      if (googleUser == null) {
-        googleUser = await googleSignIn.signIn();
-      }
+      googleUser ??= await googleSignIn.signIn();
 
       if (googleUser == null) {
         setState(() {
@@ -247,13 +246,13 @@ class _FirebaseLoginPageState extends State<FirebaseLoginPage> {
         await FirebaseUserService.saveUser(user);
         
         // Perform full data sync: upload local data, then download user data from Firebase
-        print('Starting data synchronization...');
+        debugPrint('Starting data synchronization...');
         final syncSuccess = await DataSyncService.performFullSync();
         
         if (syncSuccess) {
-          print('Data synchronization completed successfully');
+          debugPrint('Data synchronization completed successfully');
         } else {
-          print('Warning: Data synchronization failed, but continuing to home page');
+          debugPrint('Warning: Data synchronization failed, but continuing to home page');
         }
         
         _navigateToHome();
@@ -263,7 +262,7 @@ class _FirebaseLoginPageState extends State<FirebaseLoginPage> {
         _isLoading = false;
         _errorMessage = 'Authentication failed: ${e.message}';
       });
-      print('Firebase Auth Error: ${e.code} - ${e.message}');
+      debugPrint('Firebase Auth Error: ${e.code} - ${e.message}');
     } on PlatformException catch (e) {
       final isGoogleConfigError =
           e.code == 'sign_in_failed' &&
@@ -276,13 +275,13 @@ class _FirebaseLoginPageState extends State<FirebaseLoginPage> {
                 'Please register this app SHA-1/SHA-256 in Firebase and download a new google-services.json.'
             : 'Google Sign-In failed: ${e.message ?? e.code}';
       });
-      print('Google Sign-In Platform Error: ${e.code} - ${e.message}');
+      debugPrint('Google Sign-In Platform Error: ${e.code} - ${e.message}');
     } catch (e) {
       setState(() {
         _isLoading = false;
         _errorMessage = 'An error occurred: $e';
       });
-      print('Error: $e');
+      debugPrint('Error: $e');
     }
   }
 
@@ -332,13 +331,13 @@ class _FirebaseLoginPageState extends State<FirebaseLoginPage> {
         _isLoading = false;
         _errorMessage = errorMsg;
       });
-      print('Firebase Auth Error: ${e.code} - ${e.message}');
+      debugPrint('Firebase Auth Error: ${e.code} - ${e.message}');
     } catch (e) {
       setState(() {
         _isLoading = false;
         _errorMessage = 'An error occurred: $e';
       });
-      print('Error: $e');
+      debugPrint('Error: $e');
     }
   }
 
@@ -393,13 +392,13 @@ class _FirebaseLoginPageState extends State<FirebaseLoginPage> {
         _isLoading = false;
         _errorMessage = errorMsg;
       });
-      print('Firebase Auth Error: ${e.code} - ${e.message}');
+      debugPrint('Firebase Auth Error: ${e.code} - ${e.message}');
     } catch (e) {
       setState(() {
         _isLoading = false;
         _errorMessage = 'An error occurred: $e';
       });
-      print('Error: $e');
+      debugPrint('Error: $e');
     }
   }
 
@@ -439,7 +438,7 @@ class _FirebaseLoginPageState extends State<FirebaseLoginPage> {
                       color: Colors.white,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
+                          color: Colors.black.withValues(alpha: 0.2),
                           blurRadius: 10,
                           offset: const Offset(0, 5),
                         ),
@@ -468,7 +467,7 @@ class _FirebaseLoginPageState extends State<FirebaseLoginPage> {
                     'Master your flashcards with daily practice',
                     style: TextStyle(
                       fontSize: 16,
-                      color: Colors.white.withOpacity(0.9),
+                      color: Colors.white.withValues(alpha: 0.9),
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -643,12 +642,19 @@ class _FirebaseLoginPageState extends State<FirebaseLoginPage> {
                   // ),
                   // const SizedBox(height: 40),
 
-                  // Terms text
+                  TextButton.icon(
+                    onPressed: () => openPrivacyPolicy(context),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.white,
+                    ),
+                    icon: const Icon(Icons.privacy_tip_outlined, size: 18),
+                    label: const Text('Política de Privacidade'),
+                  ),
                   Text(
-                    'By signing in, you agree to our Terms of Service',
+                    'Ao continuar, consulte nossa Política de Privacidade.',
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.white.withOpacity(0.7),
+                      color: Colors.white.withValues(alpha: 0.7),
                     ),
                     textAlign: TextAlign.center,
                   ),

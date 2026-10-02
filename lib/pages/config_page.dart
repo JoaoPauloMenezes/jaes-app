@@ -12,6 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/app_user.dart';
 import '../services/data_sync_service.dart';
 import '../services/user_service.dart';
+import '../utils/privacy_policy.dart';
 import 'firebase_login_page.dart';
 
 class ConfigScreen extends StatefulWidget {
@@ -36,8 +37,6 @@ class _ConfigScreenState extends State<ConfigScreen> {
   ];
 
   bool _ttsEnabled = true;
-  double _ttsPitch = 1.0;
-  double _ttsRate = 1.0;
   String _ttsSpeedPreset = 'normal';
   String _ttsVoice = '';
   List<dynamic> _availableVoices = [];
@@ -73,7 +72,7 @@ class _ConfigScreenState extends State<ConfigScreen> {
         });
       }
     } catch (e) {
-      print('Error loading voices: $e');
+      debugPrint('Error loading voices: $e');
     }
   }
 
@@ -86,12 +85,6 @@ class _ConfigScreenState extends State<ConfigScreen> {
           _speedPresets.any((p) => p['key'] == savedPreset)) {
         _ttsSpeedPreset = savedPreset;
       }
-      final preset = _speedPresets.firstWhere(
-        (p) => p['key'] == _ttsSpeedPreset,
-        orElse: () => _speedPresets[2],
-      );
-      _ttsPitch = preset['pitch'] as double;
-      _ttsRate = preset['rate'] as double;
       final savedName = _prefs.getString('tts_voice_name') ?? '';
       final savedLocale = _prefs.getString('tts_voice_locale') ?? '';
       _ttsVoice = savedName.isNotEmpty ? '$savedName|$savedLocale' : '';
@@ -383,8 +376,6 @@ class _ConfigScreenState extends State<ConfigScreen> {
     final rate = preset['rate'] as double;
     setState(() {
       _ttsSpeedPreset = presetKey;
-      _ttsPitch = pitch;
-      _ttsRate = rate;
     });
     _saveTtsSetting('tts_speed_preset', presetKey);
     _saveTtsSetting('tts_pitch', pitch);
@@ -448,6 +439,8 @@ class _ConfigScreenState extends State<ConfigScreen> {
           // TTS Configuration Section
           _buildTtsConfigSection(isNarrowScreen),
           const SizedBox(height: 24),
+          _buildPrivacyPolicySection(),
+          const SizedBox(height: 12),
           _buildLocalLogoutSection(),
           const SizedBox(height: 12),
           _buildDeleteAccountSection(),
@@ -592,7 +585,8 @@ class _ConfigScreenState extends State<ConfigScreen> {
                 Switch(
                   value: _ttsEnabled,
                   onChanged: _updateTtsEnabled,
-                  activeColor: Colors.blue.shade600,
+                  activeThumbColor: Colors.blue.shade600,
+                  activeTrackColor: Colors.blue.shade100,
                 ),
               ],
             ),
@@ -726,6 +720,20 @@ class _ConfigScreenState extends State<ConfigScreen> {
         title: const Text('Sair deste dispositivo'),
         subtitle: const Text('Sai da conta atual e apaga os dados locais.'),
         onTap: _logoutLocally,
+      ),
+    );
+  }
+
+  Widget _buildPrivacyPolicySection() {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: ListTile(
+        leading: const Icon(Icons.privacy_tip_outlined, color: Colors.blue),
+        title: const Text('Política de Privacidade'),
+        subtitle: const Text('Consulte como seus dados são tratados.'),
+        trailing: const Icon(Icons.open_in_new),
+        onTap: () => openPrivacyPolicy(context),
       ),
     );
   }
