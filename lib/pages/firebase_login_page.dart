@@ -618,30 +618,30 @@ class _FirebaseLoginPageState extends State<FirebaseLoginPage> {
                   const SizedBox(height: 24),
 
                   // Info text
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.2),
-                      ),
-                    ),
-                    child: Text(
-                      _isGoogleSignInSupported
-                          ? 'Sign in with your Google account to create or access your account. '
-                            'Your data will be securely stored and synced across devices.'
-                          : 'Sign in with your email and password. If you don\'t have an account, '
-                            'click Sign Up to create one. Your data will be securely stored and synced.',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.white.withOpacity(0.95),
-                        height: 1.6,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  const SizedBox(height: 40),
+                  // Container(
+                  //   padding: const EdgeInsets.all(16),
+                  //   decoration: BoxDecoration(
+                  //     color: Colors.white.withOpacity(0.1),
+                  //     borderRadius: BorderRadius.circular(8),
+                  //     border: Border.all(
+                  //       color: Colors.white.withOpacity(0.2),
+                  //     ),
+                  //   ),
+                  //   child: Text(
+                  //     _isGoogleSignInSupported || _isAppleSignInSupported
+                  //         ? 'Sign in with your Google or Apple account to create or access your account. '
+                  //           'Your data will be securely stored and synced across devices.'
+                  //         : 'Sign in with your email and password. If you don\'t have an account, '
+                  //           'click Sign Up to create one. Your data will be securely stored and synced.',
+                  //     style: TextStyle(
+                  //       fontSize: 14,
+                  //       color: Colors.white.withOpacity(0.95),
+                  //       height: 1.6,
+                  //     ),
+                  //     textAlign: TextAlign.center,
+                  //   ),
+                  // ),
+                  // const SizedBox(height: 40),
 
                   // Terms text
                   Text(

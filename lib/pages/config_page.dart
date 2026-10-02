@@ -1,7 +1,13 @@
+import 'dart:convert';
+import 'dart:math';
+
+import 'package:crypto/crypto.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/app_user.dart';
 import '../services/data_sync_service.dart';
@@ -36,6 +42,7 @@ class _ConfigScreenState extends State<ConfigScreen> {
   String _ttsVoice = '';
   List<dynamic> _availableVoices = [];
   AppUser? _currentUser;
+  bool _isDeletingAccount = false;
 
   @override
   void initState() {
@@ -166,6 +173,199 @@ class _ConfigScreenState extends State<ConfigScreen> {
     );
   }
 
+  Future<void> _deleteAccount() async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Apagar conta permanentemente?'),
+        content: const Text(
+          'Essa ação vai apagar sua conta e todos os seus dados deste dispositivo e do nosso servidor. '
+          'Essa ação não pode ser desfeita.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Apagar conta'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldDelete != true || !mounted) return;
+
+    setState(() => _isDeletingAccount = true);
+
+    try {
+      final user = _firebaseAuth.currentUser;
+      if (user == null) {
+        throw StateError('Nenhum usuário autenticado.');
+      }
+
+      final reauthenticated = await _reauthenticateUser(user);
+      if (!reauthenticated) {
+        if (mounted) setState(() => _isDeletingAccount = false);
+        return;
+      }
+
+      final serverDataDeleted = await DataSyncService.deleteAllServerData();
+      if (!serverDataDeleted) {
+        throw StateError(
+          'Não foi possível remover os dados do servidor. A conta foi mantida.',
+        );
+      }
+
+      await _deleteFirebaseUser(user);
+      final localDataDeleted = await DataSyncService.clearAllLocalData();
+      await UserService.clearUser();
+      await GoogleSignIn().signOut();
+
+      if (!mounted) return;
+      if (!localDataDeleted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Conta apagada, mas alguns dados locais não puderam ser removidos.',
+            ),
+          ),
+        );
+      }
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const FirebaseLoginPage()),
+        (_) => false,
+      );
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      setState(() => _isDeletingAccount = false);
+      final message = e.code == 'requires-recent-login'
+          ? 'Por segurança, saia e entre novamente na sua conta antes de apagá-la.'
+          : 'Erro ao apagar conta: ${e.message}';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isDeletingAccount = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao apagar conta: $e')),
+      );
+    }
+  }
+
+  Future<bool> _reauthenticateUser(User user) async {
+    final credential = await _getReauthenticationCredential(user);
+    if (credential == null) return false;
+    await user.reauthenticateWithCredential(credential);
+    return true;
+  }
+
+  Future<void> _deleteFirebaseUser(User user) async {
+    try {
+      await user.delete();
+    } on FirebaseAuthException catch (e) {
+      if (e.code != 'requires-recent-login') rethrow;
+
+      final credential = await _getReauthenticationCredential(user);
+      if (credential == null) {
+        throw StateError('A reautenticação foi cancelada.');
+      }
+      await user.reauthenticateWithCredential(credential);
+      await user.delete();
+    }
+  }
+
+  Future<AuthCredential?> _getReauthenticationCredential(User user) async {
+    final providers = user.providerData.map((info) => info.providerId).toSet();
+
+    if (providers.contains('google.com')) {
+      final googleUser = await GoogleSignIn(scopes: ['email', 'profile']).signIn();
+      if (googleUser == null) return null;
+      final googleAuth = await googleUser.authentication;
+      return GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+    }
+
+    if (providers.contains('apple.com') &&
+        !kIsWeb &&
+        defaultTargetPlatform == TargetPlatform.iOS) {
+      final rawNonce = _generateNonce();
+      try {
+        final appleCredential = await SignInWithApple.getAppleIDCredential(
+          scopes: [
+            AppleIDAuthorizationScopes.email,
+            AppleIDAuthorizationScopes.fullName,
+          ],
+          nonce: sha256.convert(utf8.encode(rawNonce)).toString(),
+        );
+        return OAuthProvider('apple.com').credential(
+          idToken: appleCredential.identityToken,
+          rawNonce: rawNonce,
+        );
+      } on SignInWithAppleAuthorizationException catch (e) {
+        if (e.code == AuthorizationErrorCode.canceled) return null;
+        rethrow;
+      }
+    }
+
+    if (providers.contains('password') && user.email != null) {
+      final password = await _requestPassword();
+      if (password == null) return null;
+      return EmailAuthProvider.credential(
+        email: user.email!,
+        password: password,
+      );
+    }
+
+    throw StateError(
+      'Não foi possível identificar um método de login para confirmar sua identidade.',
+    );
+  }
+
+  Future<String?> _requestPassword() async {
+    final controller = TextEditingController();
+    try {
+      return await showDialog<String>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Confirme sua senha'),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            obscureText: true,
+            decoration: const InputDecoration(labelText: 'Senha'),
+            onSubmitted: (password) => Navigator.pop(dialogContext, password),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, controller.text),
+              child: const Text('Confirmar'),
+            ),
+          ],
+        ),
+      );
+    } finally {
+      controller.dispose();
+    }
+  }
+
+  String _generateNonce([int length = 32]) {
+    const charset =
+        '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
+    final random = Random.secure();
+    return List.generate(
+      length,
+      (_) => charset[random.nextInt(charset.length)],
+    ).join();
+  }
+
   void _updateTtsEnabled(bool value) {
     setState(() {
       _ttsEnabled = value;
@@ -249,6 +449,8 @@ class _ConfigScreenState extends State<ConfigScreen> {
           _buildTtsConfigSection(isNarrowScreen),
           const SizedBox(height: 24),
           _buildLocalLogoutSection(),
+          const SizedBox(height: 12),
+          _buildDeleteAccountSection(),
         ],
       ),
     );
@@ -524,6 +726,25 @@ class _ConfigScreenState extends State<ConfigScreen> {
         title: const Text('Sair deste dispositivo'),
         subtitle: const Text('Sai da conta atual e apaga os dados locais.'),
         onTap: _logoutLocally,
+      ),
+    );
+  }
+
+  Widget _buildDeleteAccountSection() {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: ListTile(
+        leading: _isDeletingAccount
+            ? const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(Icons.delete_forever, color: Colors.red),
+        title: const Text('Apagar conta'),
+        subtitle: const Text('Remove permanentemente sua conta e seus dados do dispositivo e do servidor.'),
+        onTap: _isDeletingAccount ? null : _deleteAccount,
       ),
     );
   }

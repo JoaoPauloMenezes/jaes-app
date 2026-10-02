@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_database/firebase_database.dart';
 
 // Local storage services
 import 'flashcard_service.dart';
@@ -169,6 +170,35 @@ class DataSyncService {
       return true;
     } catch (e) {
       print('Error clearing local data: $e');
+      return false;
+    }
+  }
+
+  /// Permanently remove the current user's data from Firebase (account deletion)
+  static Future<bool> deleteAllServerData() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        print('No user is logged in, cannot delete server data');
+        return false;
+      }
+
+      final uid = user.uid;
+      final db = FirebaseDatabase.instance;
+
+      await db.ref().update({
+        'flashcards/$uid': null,
+        'decks/$uid': null,
+        'sets/$uid': null,
+        'short_term_memos/$uid': null,
+        'daily_flashcard_sets/$uid': null,
+        'users/$uid': null,
+      });
+
+      print('All server data deleted for user: $uid');
+      return true;
+    } catch (e) {
+      print('Error deleting server data from Firebase: $e');
       return false;
     }
   }
