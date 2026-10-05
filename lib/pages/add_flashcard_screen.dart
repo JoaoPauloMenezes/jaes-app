@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 import 'package:translator/translator.dart';
 import '/models/flashcard.dart';
 import '/services/firebase_flashcard_service.dart';
@@ -34,6 +35,7 @@ class _AddFlashcardFormState extends State<AddFlashcardForm> {
   bool _isLoading = false;
   final _translator = GoogleTranslator();
   bool _isTranslating = false;
+  final FlutterTts _flutterTts = FlutterTts();
 
   @override
   void initState() {
@@ -44,9 +46,17 @@ class _AddFlashcardFormState extends State<AddFlashcardForm> {
 
   @override
   void dispose() {
+    _flutterTts.stop();
     _frontController.dispose();
     _backController.dispose();
     super.dispose();
+  }
+
+  Future<void> _speakText(String text) async {
+    final trimmedText = text.trim();
+    if (trimmedText.isEmpty) return;
+    await _flutterTts.stop();
+    await _flutterTts.speak(trimmedText);
   }
 
   void _translateToPortuguese(String? text) async {
@@ -145,6 +155,11 @@ class _AddFlashcardFormState extends State<AddFlashcardForm> {
                     borderRadius: BorderRadius.circular(8.0),
                   ),
                   prefixIcon: const Icon(Icons.question_answer),
+                  suffixIcon: IconButton(
+                    tooltip: 'Read Front text',
+                    icon: const Icon(Icons.volume_up),
+                    onPressed: () => _speakText(_frontController.text),
+                  ),
                 ),
                 maxLines: 5,
                 minLines: 3,
@@ -176,7 +191,11 @@ class _AddFlashcardFormState extends State<AddFlashcardForm> {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           ),
                         )
-                      : null,
+                      : IconButton(
+                          tooltip: 'Read Back text',
+                          icon: const Icon(Icons.volume_up),
+                          onPressed: () => _speakText(_backController.text),
+                        ),
                   helperText: 'Auto-translates from front card to Portuguese',
                   helperStyle: const TextStyle(fontSize: 12),
                 ),

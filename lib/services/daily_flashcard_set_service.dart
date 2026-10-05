@@ -59,6 +59,53 @@ class DailyFlashcardSetService {
     return newSet;
   }
 
+  /// Create a new daily set for today, replacing the current one (extra training round)
+  static Future<DailyFlashcardSet> createExtraSet(
+    List<Flashcard> availableFlashcards,
+  ) async {
+    final existing = await _loadSet();
+    final previousIds = existing?.flashcardIds.toSet() ?? <String>{};
+    final fresh = availableFlashcards
+        .where((card) => !previousIds.contains(card.id))
+        .toList();
+    final ids = _selectFlashcards(fresh, _maxCardsPerDay);
+    if (ids.length < _maxCardsPerDay) {
+      final used = ids.toSet();
+      ids.addAll(
+        _selectFlashcards(
+          availableFlashcards.where((c) => !used.contains(c.id)).toList(),
+          _maxCardsPerDay - ids.length,
+        ),
+      );
+    }
+    final newSet = DailyFlashcardSet(date: DateTime.now(), flashcardIds: ids);
+    await _saveSet(newSet);
+    await _syncAllDataToFirebase(newSet);
+    return newSet;
+  }
+
+  /// Restore today's set from Firebase after a fresh login, if none is stored locally
+  static Future<void> restoreTodaysSetFromFirebase() async {
+    try {
+      final existing = await _loadSet();
+      if (existing != null && existing.isFromToday()) return;
+      final remote = await FirebaseDailyFlashcardSetService.getTodaysSet();
+      if (remote != null && remote.isFromToday()) {
+        await _saveSet(remote);
+      }
+    } catch (e) {
+      print('Error restoring daily set: $e');
+    }
+  }
+
+  /// Upload today's locally stored set to Firebase
+  static Future<void> uploadTodaysSet() async {
+    final existing = await _loadSet();
+    if (existing != null && existing.isFromToday()) {
+      await FirebaseDailyFlashcardSetService.saveSet(existing);
+    }
+  }
+
   /// Create a new daily set by selecting flashcards
   static Future<DailyFlashcardSet> _createNewDailySet(
     List<Flashcard> availableFlashcards,
@@ -129,9 +176,15 @@ class DailyFlashcardSetService {
     List<Flashcard> availableFlashcards,
     int maxCount,
   ) {
-    // Current strategy: Random selection
-    final shuffled = List<Flashcard>.from(availableFlashcards);
-    shuffled.shuffle();
+    // Shuffle within each state so toLearn cards come first but known/learned
+    // cards still fill the set when they are all the user has.
+    final shuffled = List<Flashcard>.from(availableFlashcards)..shuffle();
+    const stateOrder = {'toLearn': 0, 'known': 1, 'learned': 2};
+    shuffled.sort(
+      (a, b) => (stateOrder[a.state.name] ?? 3).compareTo(
+        stateOrder[b.state.name] ?? 3,
+      ),
+    );
 
     final selected = shuffled
         .take(maxCount)

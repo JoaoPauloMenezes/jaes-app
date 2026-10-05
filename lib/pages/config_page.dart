@@ -29,12 +29,21 @@ class _ConfigScreenState extends State<ConfigScreen> {
   
   // Fixed pitch/rate combos exposed to the user as simple speed presets.
   static const List<Map<String, Object>> _speedPresets = [
-    {'key': 'muito_lento', 'label': 'Muito Lento', 'pitch': 0.65, 'rate': 0.4},
-    {'key': 'lento', 'label': 'Lento', 'pitch': 0.75, 'rate': 0.6},
-    {'key': 'normal', 'label': 'Normal', 'pitch': 0.9, 'rate': 0.8},
-    {'key': 'rapido', 'label': 'Rápido', 'pitch': 0.95, 'rate': 1.0},
-    {'key': 'muito_rapido', 'label': 'Muito Rápido', 'pitch': 1.05, 'rate': 1.2},
+    {'key': 'muito_lento', 'label': 'Muito Lento', 'pitch': 0.55, 'rate': 0.2},
+    {'key': 'lento', 'label': 'Lento', 'pitch': 0.65, 'rate': 0.4},
+    {'key': 'normal', 'label': 'Normal', 'pitch': 0.75, 'rate': 0.6},
+    {'key': 'rapido', 'label': 'Rápido', 'pitch': 0.9, 'rate': 0.8},
+    {'key': 'muito_rapido', 'label': 'Muito Rápido', 'pitch': 0.95, 'rate': 1.0},
   ];
+
+  // Old preset key -> new key, since each preset shifted one step.
+  static const Map<String, String> _legacyPresetMigration = {
+    'muito_lento': 'lento',
+    'lento': 'normal',
+    'normal': 'rapido',
+    'rapido': 'muito_rapido',
+    'muito_rapido': 'muito_rapido',
+  };
 
   bool _ttsEnabled = true;
   String _ttsSpeedPreset = 'normal';
@@ -78,6 +87,15 @@ class _ConfigScreenState extends State<ConfigScreen> {
 
   Future<void> _loadTtsSettings() async {
     _prefs = await SharedPreferences.getInstance();
+    if (!(_prefs.getBool('tts_presets_v2') ?? false)) {
+      final old = _prefs.getString('tts_speed_preset');
+      final migrated = _legacyPresetMigration[old] ?? 'normal';
+      final preset = _speedPresets.firstWhere((p) => p['key'] == migrated);
+      await _prefs.setString('tts_speed_preset', migrated);
+      await _prefs.setDouble('tts_pitch', preset['pitch'] as double);
+      await _prefs.setDouble('tts_rate', preset['rate'] as double);
+      await _prefs.setBool('tts_presets_v2', true);
+    }
     setState(() {
       _ttsEnabled = _prefs.getBool('tts_enabled') ?? true;
       final savedPreset = _prefs.getString('tts_speed_preset');
@@ -147,6 +165,18 @@ class _ConfigScreenState extends State<ConfigScreen> {
     );
 
     if (shouldLogout != true || !mounted) return;
+
+    // Persist progress (memos and today's daily set) before wiping local data.
+    final uploaded = await DataSyncService.uploadAllDataToFirebase();
+    if (!uploaded) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Nao foi possivel sincronizar seus dados. Tente novamente.'),
+        ),
+      );
+      return;
+    }
 
     final cleared = await DataSyncService.clearAllLocalData();
     await UserService.clearUser();

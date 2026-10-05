@@ -58,8 +58,8 @@ class DataSyncService {
         print('No memos to upload');
       }
 
-      // Note: Daily flashcard sets are automatically synced when created
-      // No need to manually upload the current daily set here
+      // Daily set is uploaded so progress survives logout
+      await DailyFlashcardSetService.uploadTodaysSet();
 
       print('Successfully uploaded all local data to Firebase');
       return true;
@@ -111,8 +111,7 @@ class DataSyncService {
         print('No memos to download');
       }
 
-      // Note: Daily flashcard sets are managed automatically
-      // They will be created/loaded when needed
+      await DailyFlashcardSetService.restoreTodaysSetFromFirebase();
 
       print('Successfully downloaded all data from Firebase');
       return true;

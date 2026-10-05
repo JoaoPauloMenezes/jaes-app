@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/flashcard.dart';
 import '../enums/flashcard_state.dart';
+import '../services/daily_flashcard_set_service.dart';
 
 /// Widget displayed when all flashcards for the day have been tested
 class DailySetSummaryWidget extends StatelessWidget {
@@ -32,11 +33,27 @@ class DailySetSummaryWidget extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(
-              _summaryMessage,
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Text(
+                _summaryMessage,
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
             ),
+            if (_hasFewCards) ...[
+              const SizedBox(height: 12),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 32),
+                child: Text(
+                  'You have only a few flashcards. The more cards you add, the more '
+                  'varied your daily sets become and the better you learn. '
+                  'Add new flashcards to keep improving!',
+                  style: TextStyle(fontSize: 14, color: Colors.grey),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
             const SizedBox(height: 40),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -75,6 +92,10 @@ class DailySetSummaryWidget extends StatelessWidget {
       ),
     );
   }
+
+  bool get _hasFewCards =>
+      testedCards.isNotEmpty &&
+      testedCards.length < DailyFlashcardSetService.getMaxCardsPerDay();
 
   String get _summaryMessage {
     if (testedCards.isEmpty) {

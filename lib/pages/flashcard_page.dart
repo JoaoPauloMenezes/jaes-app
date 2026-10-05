@@ -60,8 +60,8 @@ class _FlashcardPageState extends State<FlashcardPage> {
       // Load TTS settings from SharedPreferences
       final prefs = await SharedPreferences.getInstance();
       final bool ttsEnabled = prefs.getBool('tts_enabled') ?? true;
-      final double ttsPitch = prefs.getDouble('tts_pitch') ?? 1.0;
-      final double ttsRate = prefs.getDouble('tts_rate') ?? 1.0;
+      final double ttsPitch = prefs.getDouble('tts_pitch') ?? 0.75;
+      final double ttsRate = prefs.getDouble('tts_rate') ?? 0.6;
       final String ttsVoiceName = prefs.getString('tts_voice_name') ?? '';
       final String ttsVoiceLocale = prefs.getString('tts_voice_locale') ?? '';
 
@@ -179,7 +179,19 @@ class _FlashcardPageState extends State<FlashcardPage> {
     await _loadActiveCards();
   }
 
-  Future<void> _loadActiveCards() async {
+  Future<void> _startExtraDailySet() async {
+    setState(() {
+      _activeCards = [];
+      _testedCards = [];
+      _allActiveFlashcards = [];
+      _isLoading = true;
+      _isBackVisible.clear();
+      _isStudying = false;
+    });
+    await _loadActiveCards(extraSet: true);
+  }
+
+  Future<void> _loadActiveCards({bool extraSet = false}) async {
     try {
       // First, try to load decks from local database
       List<dynamic> decks = await DeckService.getAllDecks();
@@ -235,9 +247,9 @@ class _FlashcardPageState extends State<FlashcardPage> {
           .toList();
 
       // Get or create today's daily flashcard set
-      final dailySet = await DailyFlashcardSetService.getTodaysSet(
-        availableCards,
-      );
+      final dailySet = extraSet
+          ? await DailyFlashcardSetService.createExtraSet(availableCards)
+          : await DailyFlashcardSetService.getTodaysSet(availableCards);
 
       if (dailySet == null) {
         setState(() {
@@ -250,14 +262,9 @@ class _FlashcardPageState extends State<FlashcardPage> {
 
       // Filter cards to only include those in today's daily set
       final dailySetIds = dailySet.flashcardIds.toSet();
-      final today = DateTime.now();
+      // Only answers given after this set was created count as done for it.
       final answeredToday = (await ShortTermMemoService.getAllMemos())
-          .where((memo) {
-            final date = memo.lastTestDate;
-            return date.year == today.year &&
-                date.month == today.month &&
-                date.day == today.day;
-          })
+          .where((memo) => !memo.lastTestDate.isBefore(dailySet.date))
           .map((memo) => memo.flashcardId)
           .toSet();
       final cardsForToday =
@@ -343,7 +350,28 @@ class _FlashcardPageState extends State<FlashcardPage> {
                   ),
                 ),
               ),
-            if (_activeCards.isEmpty)
+            if (_activeCards.isEmpty && _allActiveFlashcards.isNotEmpty)
+              Positioned(
+                bottom: 100,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: ElevatedButton.icon(
+                    onPressed: _startExtraDailySet,
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Train more'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 32,
+                        vertical: 16,
+                      ),
+                      backgroundColor: Colors.blue,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            if (_activeCards.isEmpty && _allActiveFlashcards.isEmpty)
               const Positioned(
                 bottom: 100,
                 left: 0,

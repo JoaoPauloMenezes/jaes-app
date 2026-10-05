@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 const privacyPolicyUrl =
-    'https://joaopaulomenezes.github.io/jaes-app/politica-de-privacidade.html';
+    'https://joaopaulomenezes.github.io/jaes-legal/politica-de-privacidade.html';
 
 Future<void> openPrivacyPolicy(BuildContext context) async {
   try {
