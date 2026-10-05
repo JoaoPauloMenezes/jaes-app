@@ -27,15 +27,38 @@ jobs:
           xcrun simctl bootstatus "$UDID"
           echo "SIM_UDID=$UDID" >> "$GITHUB_ENV"
 
-      - name: Capture screenshots
+      - name: Capture iPhone screenshots
         run: |
+          set -euo pipefail
           flutter drive \
             --driver=test_driver/integration_test.dart \
             --target=integration_test/screenshots_test.dart \
             -d "$SIM_UDID"
-          sips -g pixelWidth -g pixelHeight screenshots/*.png
+          mkdir -p screenshots/iphone-6.5
+          mv screenshots/*.png screenshots/iphone-6.5/
+          sips -g pixelWidth -g pixelHeight screenshots/iphone-6.5/*.png
+
+      - name: Boot iPad 13-inch simulator (2064x2752)
+        run: |
+          set -euo pipefail
+          RUNTIME=$(xcrun simctl list runtimes available | grep -E "^iOS " | tail -1 | grep -oE 'com\.apple\.CoreSimulator\.SimRuntime\.iOS-[0-9-]+')
+          UDID=$(xcrun simctl create "Screenshots iPad Pro 13" "com.apple.CoreSimulator.SimDeviceType.iPad-Pro-13-inch-M4" "$RUNTIME")
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID"
+          echo "IPAD_SIM_UDID=$UDID" >> "$GITHUB_ENV"
+
+      - name: Capture iPad 13-inch screenshots
+        run: |
+          set -euo pipefail
+          flutter drive \
+            --driver=test_driver/integration_test.dart \
+            --target=integration_test/screenshots_test.dart \
+            -d "$IPAD_SIM_UDID"
+          mkdir -p screenshots/ipad-13
+          mv screenshots/*.png screenshots/ipad-13/
+          sips -g pixelWidth -g pixelHeight screenshots/ipad-13/*.png
 
       - uses: actions/upload-artifact@v4
         with:
           name: app-store-screenshots
-          path: screenshots/*.png
+          path: screenshots/
