@@ -20,8 +20,10 @@ jobs:
       - name: Boot iPhone 6.9" simulator
         run: |
           set -euo pipefail
-          DEVICE_NAME="iPhone 16 Pro Max"
-          UDID=$(xcrun simctl list devices available | grep "$DEVICE_NAME (" | head -1 | grep -oE '[0-9A-F-]{36}')
+          xcrun simctl list devices available
+          # Runner images change the available models, so pick any 6.9" Pro Max.
+          UDID=$(xcrun simctl list devices available | grep -E "iPhone .* Pro Max \(" | tail -1 | grep -oE '[0-9A-F]{8}-([0-9A-F]{4}-){3}[0-9A-F]{12}' || true)
+          if [ -z "$UDID" ]; then echo "No Pro Max simulator available"; exit 1; fi
           xcrun simctl boot "$UDID"
           xcrun simctl bootstatus "$UDID"
           echo "SIM_UDID=$UDID" >> "$GITHUB_ENV"
