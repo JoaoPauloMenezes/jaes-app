@@ -17,13 +17,12 @@ jobs:
 
       - run: flutter pub get
 
-      - name: Boot iPhone 6.9" simulator
+      - name: Boot iPhone 6.5" simulator (1284x2778)
         run: |
           set -euo pipefail
-          xcrun simctl list devices available
-          # Runner images change the available models, so pick any 6.9" Pro Max.
-          UDID=$(xcrun simctl list devices available | grep -E "iPhone .* Pro Max \(" | tail -1 | grep -oE '[0-9A-F]{8}-([0-9A-F]{4}-){3}[0-9A-F]{12}' || true)
-          if [ -z "$UDID" ]; then echo "No Pro Max simulator available"; exit 1; fi
+          RUNTIME=$(xcrun simctl list runtimes available | grep -E "^iOS " | tail -1 | grep -oE 'com\.apple\.CoreSimulator\.SimRuntime\.iOS-[0-9-]+')
+          # iPhone 14 Plus renders at 1284x2778, one of the sizes App Store Connect accepts.
+          UDID=$(xcrun simctl create "Screenshots 14 Plus" "com.apple.CoreSimulator.SimDeviceType.iPhone-14-Plus" "$RUNTIME")
           xcrun simctl boot "$UDID"
           xcrun simctl bootstatus "$UDID"
           echo "SIM_UDID=$UDID" >> "$GITHUB_ENV"
@@ -34,6 +33,7 @@ jobs:
             --driver=test_driver/integration_test.dart \
             --target=integration_test/screenshots_test.dart \
             -d "$SIM_UDID"
+          sips -g pixelWidth -g pixelHeight screenshots/*.png
 
       - uses: actions/upload-artifact@v4
         with:
