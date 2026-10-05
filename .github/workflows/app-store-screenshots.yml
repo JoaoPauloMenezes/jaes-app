@@ -1,0 +1,39 @@
+name: App Store Screenshots
+
+on:
+  workflow_dispatch:
+
+jobs:
+  screenshots:
+    runs-on: macos-latest
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - run: flutter pub get
+
+      - name: Boot iPhone 6.9" simulator
+        run: |
+          set -euo pipefail
+          DEVICE_NAME="iPhone 16 Pro Max"
+          UDID=$(xcrun simctl list devices available | grep "$DEVICE_NAME (" | head -1 | grep -oE '[0-9A-F-]{36}')
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID"
+          echo "SIM_UDID=$UDID" >> "$GITHUB_ENV"
+
+      - name: Capture screenshots
+        run: |
+          flutter drive \
+            --driver=test_driver/integration_test.dart \
+            --target=integration_test/screenshots_test.dart \
+            -d "$SIM_UDID"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-store-screenshots
+          path: screenshots/*.png
