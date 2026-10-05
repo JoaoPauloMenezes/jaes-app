@@ -36,7 +36,7 @@ void main() {
     await tester.pumpAndSettle();
     await shot('03_card_back');
 
-    await tester.pageBack();
+    await tester.tap(find.byIcon(Icons.arrow_back));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Library'));
