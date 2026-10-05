@@ -42,7 +42,15 @@ jobs:
         run: |
           set -euo pipefail
           RUNTIME=$(xcrun simctl list runtimes available | grep -E "^iOS " | tail -1 | grep -oE 'com\.apple\.CoreSimulator\.SimRuntime\.iOS-[0-9-]+')
-          UDID=$(xcrun simctl create "Screenshots iPad Pro 13" "com.apple.CoreSimulator.SimDeviceType.iPad-Pro-13-inch-M4" "$RUNTIME")
+          DEVICE_TYPES=$(xcrun simctl list -j devicetypes)
+          DEVICE_TYPE=$(printf '%s' "$DEVICE_TYPES" | jq -r '[.devicetypes[] | select(.productFamily == "iPad" and (.name | test("^iPad Pro 13-inch"))) | .identifier][0] // empty')
+          if [ -z "$DEVICE_TYPE" ]; then
+            echo "No 13-inch iPad Pro simulator device type is available."
+            printf '%s' "$DEVICE_TYPES" | jq -r '.devicetypes[] | select(.productFamily == "iPad") | .name'
+            exit 1
+          fi
+          echo "Using iPad simulator device type: $DEVICE_TYPE"
+          UDID=$(xcrun simctl create "Screenshots iPad Pro 13" "$DEVICE_TYPE" "$RUNTIME")
           xcrun simctl boot "$UDID"
           xcrun simctl bootstatus "$UDID"
           echo "IPAD_SIM_UDID=$UDID" >> "$GITHUB_ENV"
