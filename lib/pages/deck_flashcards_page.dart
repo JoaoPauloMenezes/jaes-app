@@ -55,6 +55,7 @@ class _DeckFlashcardsPageState extends State<DeckFlashcardsPage> {
     final result = await showDialog<List<String>>(
       context: context,
       builder: (context) => AlertDialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 24),
         title: const Text('Edit Flashcard'),
         content: SingleChildScrollView(
           child: Column(
@@ -115,7 +116,8 @@ class _DeckFlashcardsPageState extends State<DeckFlashcardsPage> {
         TextField(
           controller: controller,
           autofocus: autofocus,
-          maxLines: 4,
+          minLines: 4,
+          maxLines: 8,
           decoration: InputDecoration(
             labelText: label,
             contentPadding: const EdgeInsets.fromLTRB(12, 16, 12, 48),
@@ -158,13 +160,13 @@ class _DeckFlashcardsPageState extends State<DeckFlashcardsPage> {
             context: context,
             builder: (context) => Dialog(
               insetPadding: const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 72,
+                horizontal: 12,
+                vertical: 24,
               ),
               child: ConstrainedBox(
                 constraints: BoxConstraints(
-                  maxWidth: 440,
-                  maxHeight: MediaQuery.of(context).size.height * 0.7,
+                  maxWidth: 480,
+                  maxHeight: MediaQuery.of(context).size.height * 0.9,
                 ),
                 child: AddFlashcardForm(deckId: widget.deckId),
               ),

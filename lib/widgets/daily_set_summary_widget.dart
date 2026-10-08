@@ -30,6 +30,7 @@ class DailySetSummaryWidget extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Daily Summary')),
       body: Center(
+        child: SingleChildScrollView(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -75,7 +76,7 @@ class DailySetSummaryWidget extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 60),
+            const SizedBox(height: 24),
             // ElevatedButton.icon(
             //   onPressed: onResetDaily,
             //   icon: const Icon(Icons.refresh),
@@ -88,6 +89,7 @@ class DailySetSummaryWidget extends StatelessWidget {
             //   ),
             // ),
           ],
+        ),
         ),
       ),
     );

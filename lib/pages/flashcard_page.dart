@@ -321,19 +321,18 @@ class _FlashcardPageState extends State<FlashcardPage> {
     // Show summary initially, or when all cards are tested
     if (!_isStudying || (_activeCards.isEmpty && _testedCards.isNotEmpty)) {
       return Scaffold(
-        body: Stack(
+        body: Column(
           children: [
-            DailySetSummaryWidget(
-              testedCards: _allActiveFlashcards,
-              onResetDaily: _resetDailySet,
-              hasRemainingCards: _activeCards.isNotEmpty,
+            Expanded(
+              child: DailySetSummaryWidget(
+                testedCards: _allActiveFlashcards,
+                onResetDaily: _resetDailySet,
+                hasRemainingCards: _activeCards.isNotEmpty,
+              ),
             ),
-            // Start button in the middle-lower portion of the page
             if (_activeCards.isNotEmpty)
-              Positioned(
-                bottom: 100,
-                left: 0,
-                right: 0,
+              Padding(
+                padding: const EdgeInsets.only(bottom: 32),
                 child: Center(
                   child: ElevatedButton.icon(
                     onPressed: _startStudying,
@@ -351,10 +350,8 @@ class _FlashcardPageState extends State<FlashcardPage> {
                 ),
               ),
             if (_activeCards.isEmpty && _allActiveFlashcards.isNotEmpty)
-              Positioned(
-                bottom: 100,
-                left: 0,
-                right: 0,
+              Padding(
+                padding: const EdgeInsets.only(bottom: 32),
                 child: Center(
                   child: ElevatedButton.icon(
                     onPressed: _startExtraDailySet,
@@ -372,10 +369,8 @@ class _FlashcardPageState extends State<FlashcardPage> {
                 ),
               ),
             if (_activeCards.isEmpty && _allActiveFlashcards.isEmpty)
-              const Positioned(
-                bottom: 100,
-                left: 0,
-                right: 0,
+              const Padding(
+                padding: EdgeInsets.only(bottom: 32),
                 child: Center(
                   child: Text(
                     'No active flashcards',
